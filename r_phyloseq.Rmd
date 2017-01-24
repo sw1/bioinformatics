@@ -1,0 +1,114 @@
+---
+title: "r_phyloseq"
+author: "SW"
+date: "1/8/2017"
+output: html_document
+---
+
+For downstream metagenomic analysis, you cannot go wrong with Phyloseq. It's an excellent tool for importing and analyzing metagenomic data, and acts as a wrapper for a considerable number of well known tools and packages ranging from vegan to DESeq2. Moreover, it's well equipt for importing data you'd generate by using, say, QIIME, and works with its own set of structures, which really comes helps prevent potential indexing issues and the like.
+
+
+```{r,warning=FALSE,message=FALSE}
+library(phyloseq)
+library(ggplot2)
+library(ape)
+library(readr)
+library(DESeq2)
+```
+
+Let's begin by loading four pieces of data, an OTU table of taxonomic abundances (counts), taxonomy information with the taxa that a given OTU likely belongs to, sample metadata, and a phylogenetic tree.
+
+```{r}
+OTU <- read.csv('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/1b05f24f189f14ea9902ac3867aca40c80ac6db3/otu_table.csv')
+TAX <- read.csv('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/1b05f24f189f14ea9902ac3867aca40c80ac6db3/tax_table.csv')
+SAMP <- read.csv('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/052dfdc3df97589f6405d79889c9b3b651eb1967/sample_metadata.csv')
+TREE <- read.tree('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/052dfdc3df97589f6405d79889c9b3b651eb1967/tree.tree')
+```
+
+In most circumstances, we'd work on this as is, but the nice thing about phyloseq is that we can place these into a phyloseq container, allowing us to manipulate the four objects simultaneously. Imagine if we decided to filter some OTUs based on the leaves of our tree. We'd then may want to then remove these OTUs from our taxonomy. Also, removing a subset of OTUs may result in some samples with 0 total OTU counts, which justifies removing them as well. This can lead to indexing issues where we accidentally shuffle our tables. Using phyloseq, all of this is done in tandem, preventing said issues.
+
+Let's create that container. We need to coerse each objects into phyloseq-friendly objects, so note the functions wrapping each object. Also note that our row and column names *must* be consistent throughout (i.e., named the same and in the same order). And lastly, the taxonomy table has to be a matrix.
+
+```{r}
+all(colnames(OTU) == SAMP$Sample_ID)
+rownames(SAMP) <- SAMP$Sample_ID
+
+TAX <- as.matrix(TAX)
+rownames(TAX) <- paste0('otu',1:nrow(TAX))
+rownames(OTU) <- rownames(TAX)
+
+taxa_names(TREE) <- rownames(TAX)
+```
+
+And now, create the phyloseq container:
+
+```{r}
+PS <- phyloseq(otu_table(OTU,taxa_are_rows=TRUE),tax_table(TAX),sample_data(SAMP),phy_tree(TREE))
+```
+
+First, we'll filter any samples without enterotype information and then conver enterotype to a factor:
+
+```{r}
+PS1 <- prune_samples(!is.na(sample_data(PS)$Enterotype),PS)
+sample_data(PS1)$ENTEROTYPE <- as.factor(sample_data(PS1)$Enterotype)
+```
+
+Now, we'll remove any OTUs with 0 counts across samples:
+
+```{r}
+PS1 <- filter_taxa(PS1,function(x) sum(x) > 0,prune = TRUE)
+```
+
+This leaves us with the following objects:
+
+```{r}
+PS1
+```
+
+From here, we can do quite a bit, so I'm not going to go through absolutely everything. But, we can start with some figures. We can plot some metagenomic summary statistics:
+
+```{r}
+plot_richness(PS1,x='ENTEROTYPE',color='ENTEROTYPE')
+```
+
+And then some figures to show abundance in different ways:
+
+```{r}
+plot_tree(PS1,color='ENTEROTYPE')
+```
+```{r}
+plot_bar(PS1,fill='Group')
+```
+
+And a heatmap, but using subsetted data:
+
+```{r}
+PS2 <- prune_taxa(names(sort(taxa_sums(PS1),decreasing=TRUE))[1:50],PS1)
+plot_heatmap(PS2,sample.order='ENTEROTYPE',method='MDS',distance='bray')
+```
+
+Ordination is quite easy as well.
+
+```{r}
+ORD <- ordinate(PS1,method='MDS',distance='bray')
+plot_ordination(PS1,ORD,color='ENTEROTYPE') + geom_point(size=5)
+```
+
+And networks
+
+```{r}
+NET <- make_network(PS1,max.dist=.3,distance='bray')
+plot_network(NET,PS1,color='ENTEROTYPE',label=NULL)
+```
+
+And lastly, let's say we wanted to perform a differential abundance analysis between genders using DESeq2:
+
+```{r}
+PS3 <- prune_samples(!is.na(sample_data(PS)$Gender),PS)
+PS3 <- filter_taxa(PS3,function(x) sum(x) > 0,prune = TRUE)
+
+diagdds <- phyloseq_to_deseq2(PS3, ~ Gender)
+diagdds <- DESeq(diagdds, test='Wald', fitType='parametric')
+res <- results(diagdds, cooksCutoff = FALSE)
+res
+```

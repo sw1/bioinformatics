@@ -1,0 +1,345 @@
+---
+title: "In Class 2"
+author: "SW"
+date: "September 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
+```
+```{r,warning=FALSE,message=FALSE}
+source('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/162b0c542482d481f79b0160071114eb38cb568e/r_bioinformatics_functions.R')
+
+load_library(Biostrings)
+load_library(ggplot2)
+load_library(readr)
+load_library(stringr)
+load_library(reutils)
+load_library(XML)
+```
+
+
+### Loading FASTA Files
+
+A FASTA file is a file containing multiple nucleotide or amino acid sequences, each with their own identifier, formatted as a header that starts with '>'. A file essentially looks like
+
+```{r, eval=FALSE,tidy=FALSE}
+>Sequence_1
+GGCGAT
+>Sequence_2
+AAATCG
+```
+
+and so on. The structure of the content of the file is important, not necessarily the file extension. You can have a FASTA file with a .txt extension, no extension, or the common .fna extension. The trick is to know how these files are formatted to identify them. (Note that wikipedia tends to have the best information on bioinformatics file types, quality scoring, etc.)
+
+The other file type worth noting is FAST**Q**, which, in addition to sequence information, also contains a quality score for each position in the sequence that measures how likely that nucleotide or protein is correct. FASTQ files look somewhat different than FASTA:
+
+```{r, eval=FALSE,tidy=FALSE}
+@Sequence_1
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65
+@Sequence_2
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+9C;=;=<9@4868>9:67AA<9>65<=>59-+*''))**55CCFMNO>>>>>>FFFFC65
+```
+
+Again, for a given sequence, line 1 has the header, but unlike the FASTA file, FASTQ headers begin with '@'. Line 2 is the actual sequence, followed by '+' on line 3. The quality score is then found on line 4 and will be the same length as the sequence on line 1. 
+
+Let's load a FASTA file. We'll use a simple Bioconductor function. 
+
+```{r}
+fasta <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/f1fb586160d12c34f29532c731066fd8912a0e0c/example.fasta',format='fasta')
+fasta
+```
+
+For FASTQ, it's essentially the same except we change 'fasta' to 'fastq' for the format argument:
+
+```{r}
+fastq <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/f1fb586160d12c34f29532c731066fd8912a0e0c/example.fastq',format='fastq')
+fastq
+```
+
+### Creating Sequence Sets
+
+Let's approach a FASTA problem from a different direction now. We'll create a DNA string set from a bunch of individual sequences, then write the set to a FASTA file.
+
+Run the following command to add three new variables to your environment: **s1**, **s2**, and **s3**. Each represents a different DNA sequence or 'read.'
+
+```{r}
+problem_createsequencesets()
+```
+
+We're going to create a DNAStringSet object, which can then be saved as a FASTA file. First, we have to combine the sequences into a vector and then pass this vector into **DNAStringSet()**.
+
+```{r}
+S <- c(s1,s2,s3)
+SS <- DNAStringSet(S)
+```
+
+Recall that FASTA files have header names. Let's create header names for these three sequences. We can manually do it like so
+
+```{r}
+names(SS) <- c('sequence_1','sequence_2','sequence_3')
+```
+
+but this will be far from ideal if we had, say, 100,000 sequences. Instead, we're going to use a function called **paste()**, which basically pastes together vectors of text, element-wise:
+
+```{r}
+DOG <- c('dog1','dog2','dog3')
+CAT <- c('cat1','cat2','cat3')
+
+paste(DOG,CAT)
+paste(DOG,CAT,sep='-')
+paste(DOG,CAT,sep='_')
+paste(DOG,CAT,sep='')
+paste('dog','cat',1:3,sep='')
+paste('dog','cat',1:3,sep='_')
+paste('dog_','cat',1:3,sep='')
+```
+
+This is how we'll create our header names. We can grab the number of total sequences in our set using length(), which will let us create a vector to number our sequences. We'll create a header name that includes each sequence number, the word sequence, along with a user name. We'll also pass in the date using the **date()** function.
+
+```{r}
+seq_names <- paste('sequence_',1:length(SS),' | User_12 | ',date(), sep='')
+seq_names
+```
+
+Now, we'll rename the sequences in the set with these names:
+
+```{r}
+names(SS) <- seq_names
+```
+
+Finally, we can save our sequence set as a FASTA file:
+
+```{r,eval=FALSE}
+output_name <- 'seq_set_out.fasta'
+writeXStringSet(SS,file=output_name,format="fasta")
+```
+
+### Sample Metadata
+
+Often, the sequences we're working with have corresponding metadata. These metadata can range from information about the specific sequence (e.g., the type of sequencer used) to information about the organism from which the sequence was acquired (e.g., species, treatment, age). The way in which we can link our sequence reads in the FASTA file to the metadata is via the header name.
+
+Load the following sequence set:
+
+```{r,warning=FALSE}
+FASTA <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/10bc2f50d1c739827ea2ba4edb146b36a6a4c14a/problems_metadata.fasta',format='fasta')
+```
+
+To place the metadata, named **META**, into your environement, run the following:
+
+```{r}
+problem_metadata(FASTA)
+```
+
+We'll henceforth refer to the rows as 'samples.' If we want to know which samples were sequenced at the Philadelphia sequencing center, we can type
+
+```{r}
+which(META$Center == 'Philadelphia')
+```
+
+If we wanted to find the sequence with the header name 'Rosalind_6333', we can do
+
+```{r}
+FASTA['Sequence_6333']
+```
+
+And if we wanted to get the sequences corresponding to rows 12, 15, and 78 in the metadata file:
+
+```{r}
+header_names <- META$ID[c(12,15,78)]
+FASTA[header_names]
+```
+
+## Creating GC Functions
+
+The goal here will be (a) to demonstrate how to write a function and (b) better understand some useful GC quantification techniques.
+
+We'll create a function that can calcualte the GC content in a given sequence. We'll also give this function an additional parameter that allows it to calculate the GC content at a specific codon position.
+
+```{r}
+gc_calc <- function(x) (x['g']+x['c'])/sum(x)
+
+gc <- function(s,pos){
+  
+  s <- stringr::str_to_lower(s)
+  s <- unlist(strsplit(s,''))
+  
+  if (!missing(pos)) s <- s[seq(pos,length(s),3)]
+  counts <- table(s)
+  
+  gc_calc(counts)
+  
+}
+```
+
+Now, we'll create a function to calculate the GC skew. This function will calcuate the skew for the entire sequence or successive windows in the sequence of some given size.
+
+```{r}
+gc_skew_calc <- function(x) {counts <- table(x); (counts['g']-counts['c'])/(counts['g']+counts['c'])}
+
+gc_skew <- function(s,win){
+  
+  s <- stringr::str_to_lower(s)
+  s <- unlist(strsplit(s,''))
+  
+  if (missing(win)) {
+    gc <- gc_skew_calc(s)
+  }else{
+    start <- seq(1,length(s),win)
+    gc <- NULL
+    for (i in start){
+      gc <- c(gc, gc_skew_calc(s[(i):(i+win-1)]))
+    }
+  }
+  
+  gc
+  
+}
+```
+
+First, we can look at the GC content in some random sequences:
+
+```{r}
+generate_random_dna_gc_s(len=1000,seed=5)
+
+gc(s)
+gc(s,1)
+gc(s,2)
+gc(s,3)
+```
+
+And then we can check the skew:
+
+```{r}
+generate_random_dna_skew_s(len=1000,w=1,seed=5)
+gc_skew(s)
+gc_skew(s,100)
+plot_skew(gc_skew(s,25))
+```
+
+## NCBI ESearch
+
+This will look very familiar to the Python tutorial from earlier, but with more of an "R flavor." Let's look for 3 cds entries.
+
+```{r}
+ids1 <- esearch("CFTR AND human[Organism] AND complete",db='nucleotide',retmax=15,sort='relevance')
+ids2 <- esearch("PKD1 AND human[Organism] AND complete",db='nucleotide',retmax=15,sort='relevance')
+ids3 <- esearch("DMPK AND human[Organism] AND complete",db='nucleotide',retmax=15,sort='relevance')
+```
+
+We can parse a particular entry into a dataframe:
+
+```{r}
+ids_df <- reutils::content(esummary(ids1),'parsed')
+```
+
+We can also look at the text entries for each gene:
+
+```{r}
+efetch(ids1[1], rettype = "fasta", retmode = "text")
+efetch(ids2[4], rettype = "fasta", retmode = "text")
+efetch(ids3[5], rettype = "fasta", retmode = "text")
+```
+
+These look good, so let's combine the UIDs into a vector:
+
+```{r}
+ids <- c(ids1[1],ids2[4],ids3[5])
+```
+
+Now, we can extract important information, such as the sequence, by switching to XML mode:
+
+```{r}
+FASTA <- efetch(ids,db='nucleotide', rettype = "fasta", retmode = "xml")
+SEQS <- FASTA$xmlValue('//TSeq_sequence')
+```
+
+But there is actually a much better way, consistent with the FASTA tutorial above:
+
+```{r}
+tmp <- tempfile()
+FASTA <- efetch(ids,db='nucleotide', rettype = "fasta", retmode = "text", outfile=tmp)
+FASTA <- readDNAStringSet(tmp)
+```
+
+Now, let's calculate the GC content, which is easy using a bioconductor functoin (we'll skip over our functoin from before):
+
+```{r}
+letterFrequency(FASTA,'GC',as.prob=TRUE)
+```
+
+If we want the GC skew, we can use our function from before. That will give us the same GC skew result that we got from BioPython:
+
+```{r}
+skew <- gc_skew(FASTA[[2]],500)
+plot_skew(skew)
+```
+
+But, we can use a function in Bioconductor. The difference betweent his function and our implementation (and hence BioPython's) is the way the window is defined. BioPython's were not overlapping; here they are.
+
+```{r}
+skew <- lapply(seq_along(FASTA), function(i,w) {
+  numer <- letterFrequencyInSlidingView(FASTA[[i]],'G',view.width=w) -
+    letterFrequencyInSlidingView(FASTA[[i]],'C',view.width=w)
+  denom <- letterFrequencyInSlidingView(FASTA[[i]],'GC',view.width=w)
+  numer/denom
+},w=500)
+
+plot_skew(skew[[2]])
+```
+
+## CDS
+
+```{r}
+ID <- esearch("Galdieria sulphuraria[Organism] AND whole genome",db='nucleotide',retmax=5,sort='relevance')
+rec <- efetch(ID[1],db='nucleotide', rettype = "gb", retmode = "xml")
+prec <- reutils::content(rec,as='text')
+prec <- xmlParse(prec)
+prec <- xmlToList(prec)
+
+features <- prec$GBSeq$`GBSeq_feature-table`
+cds_idx <- which(sapply(features,function(x) x[[1]]) == 'CDS')
+features <- features[cds_idx]
+
+features <- lapply(features,cleanup_feat_table)
+na.omit(sapply(features,function(x) ifelse(grepl('ATPase',x['product']),x['protein_id'],NA)))
+```
+
+## Whole Genomes
+
+A nice thing about Bioconductor is how easy it is to access genomic information. Bioconductor has a pacakge called 'BSgenome' that contains complete genomes of a ton of organisms. Simply look:
+
+```{r,warning=FALSE,message=FALSE}
+load_library(BSgenome)
+```
+```{r}
+available.genomes() 
+```
+
+We can install a specific genomes and parse them quite easily (these are about 100 MBs each):
+
+```{r,warning=FALSE,message=FALSE}
+load_library(BSgenome.Athaliana.TAIR.04232008)
+load_library(BSgenome.Osativa.MSU.MSU7)
+```
+
+For example, to calculate the GC content of each chromosome in either genome, we can do the following:
+
+```{r}
+params <- new('BSParams',
+              X=Athaliana,
+              FUN = function(x) letterFrequency(x,'GC',as.prob=TRUE),
+              exclude=c('M','C'))
+unlist(bsapply(params))
+
+params <- new('BSParams',
+              X=Osativa,
+              FUN = function(x) letterFrequency(x,'GC',as.prob=TRUE),
+              exclude=c('ChrC','M','Un','Sy'))
+unlist(bsapply(params))
+```

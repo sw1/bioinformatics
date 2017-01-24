@@ -1,0 +1,145 @@
+---
+title: "r_blast"
+author: "SW"
+date: "1/8/2017"
+output: html_document
+---
+
+The best way to blast in R is by using the command line blast tools. You can either install them to your machine or use Proteus. Still, we can call these commands quite eassily through R, allowing us to effortless manipulate FASTA files, blast, and extract the output, all within our R environment.
+
+```{r,warning=FALSE,message=FALSE}
+library(readr)
+library(Biostrings)
+```
+
+Let's begin by generating two sequences, turning them into a bioconductor DNA string set, and then saving them as a FASTA file. We'll save this FASTA file as a tmp file. You can save them in a permanent location if you desire.
+
+```{r}
+S <- c('ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACAGGTAACGGTGCGGGCTGA',
+       'TCAGACCTGAGTGGCGCTAACCATCCGGCGCAGGCAGGCGATTTGCAGTACGGCTGGAATTGTCAC')
+S <- DNAStringSet(S)
+names(S) <- c('s1','s2')
+
+FASTA <- tempfile()
+writeXStringSet(S,file=FASTA,format="fasta")
+```
+
+Our FASTA file can then be loaded, line-by-line, like so:
+
+```{r}
+SEQS <- readr::read_lines(FASTA)
+SEQS
+```
+
+We now have a character vector of length 4, with alternating headers and sequences. The next step is to prepare our blastn procedure. We first need to set the location of our blast command as a variable. This may be anything from 'blastn' to the specific path of blastn. Adjust your code accordingly. A quick check can be accomplished by simply running 'blastn' in bash. If you see information about the blast command, then this is all you need; if, however, you see 'command not found,' then you have to point the specific path of blastn, which will vary depending on machine.
+
+```{r}
+blastn <- '/data/sw1/ncbi-blast-2.5.0+/bin/blastn'
+```
+
+The next step is to choose what output we want. Let's keep it simple and only return the sequence ID, the e-value, and the bit score. For a list of other outputs, see https://www.ncbi.nlm.nih.gov/books/NBK279675/ .
+
+```{r}
+output <- c('sseqid', 'evalue', 'bitscore')
+```
+
+Now, we'll run blastn. We could accomplish this using system(), but that would prevent us from saving the output in our environment. For example, 
+
+```{r}
+test <- system('pwd')
+test
+```
+
+doesn't result in a string of our working directory being saved as test. If, instead, we do the following:
+
+```{r}
+test <- system2('pwd',stdout=TRUE)
+test
+```
+
+then we get what we want. Hence, we're going to use system2(). The args argument takes all of the arguments we'd manually type in if we ran this via command line. 
+
+## Remote Blast
+
+First, we'll run a remote nucleotide blast, keeping the minimum percent identity at .99, and the organism as *Escherichia*. The input argument obviously takes our sequences, and stdout lets us save the output as a variable.
+
+```{r}
+BLAST <-  system2(blastn,
+                  args=c('-db',"'nt'",
+                         '-outfmt',sprintf("'6 %s'",paste(collapse=' ',output)),
+                         '-perc_identity',"'.99'",
+                         '-entrez_query',"'Escherichia[ORGANISM]'",
+                         '-remote'),
+                  input=SEQS,
+                  stdout=TRUE)
+```
+
+We end up getting a deliminated character string, but we can easily parse this by reading it as a table:
+
+```{r}
+BLAST_OUT <- read.table(textConnection(BLAST),quote='',sep='\t',col.names=output)
+head(BLAST_OUT)
+```
+
+## Local Blast
+
+Now, let's do the same thing, but locally. We have to grab all of the NCBI sequences we need, so we'll start by getting the top 500 uids for our search criteria:
+
+```{r}
+library(rentrez)
+
+ids <- entrez_search("Escherichia[ORGANISM]",db='nucleotide',retmax=2500,sort='relevance',
+               use_history=TRUE) # required if retmax>500
+```
+
+Now, we'll fetch the sequences, save them to a temp file, and then load them line-by-line, as before:
+
+```{r}
+n <- 100
+FASTA <- tempfile()
+for (i in seq(1,ids$retmax,n)){
+seqs <- entrez_fetch(db='nucleotide', rettype = "fasta", retmode = "text", 
+             web_history=ids$web_history,retstart=i,retmax=n)
+cat(seqs,file=FASTA,append=TRUE)
+cat('Appended ',i+n-1,' of ',ids$retmax,' sequences.\n',sep='')
+}
+DB_SEQS <- readr::read_lines(FASTA)
+head(DB_SEQS)
+```
+
+Now, we'll create our local database that we can blast against
+
+
+```{r}
+makeblastdb <- '/data/sw1/ncbi-blast-2.5.0+/bin/makeblastdb'
+db_name <- '/data/sw1/Bioinformatics/db_ecoli/db_ecoli'
+
+system2(makeblastdb,
+        args=c('-out',db_name,
+               '-dbtype','nucl',
+               '-title','ecoli',
+               '-parse_seqids',
+               '-hash_index'),
+        input=DB_SEQS,
+        stdout=FALSE)
+```
+
+Finally, we can run a local blast:
+
+```{r}
+output <- c('sseqid', 'evalue', 'bitscore')
+
+BLAST <-  system2(blastn,
+                  args=c('-db',db_name,
+                         '-outfmt',sprintf("'6 %s'",paste(collapse=' ',output)),
+                         '-perc_identity',"'.99'"),
+                  input=SEQS,
+                  stdout=TRUE)
+```
+
+and our hits:
+
+```{r}
+BLAST_OUT <- read.table(textConnection(BLAST),quote='',sep='\t',col.names=output)
+head(BLAST_OUT)
+```

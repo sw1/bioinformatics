@@ -1,0 +1,1651 @@
+---
+title: "Bioinformatics Programming Problem Set"
+author: "SW"
+date: "December 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preamble
+
+Run the following code block. Biostrings is a Bioconductor package, so please install the required packages first. If you have yet to see the installation guide, follow this link: https://dl.dropboxusercontent.com/u/907375/Bioinformatics_class/installing.htm. Also, the **source()** the function is loads all of the functions written for this tutorial; therefore, **if you clear your workspace, you should rerun the source command to reload said functions**.
+
+```{r,warning=FALSE,message=FALSE}
+source('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/162b0c542482d481f79b0160071114eb38cb568e/r_bioinformatics_functions.R')
+
+load_library(Biostrings)
+load_library(ggplot2)
+load_library(readr)
+load_library(stringr)
+```
+
+# Introduction
+
+This is going to be a set of in class exercises that are intended to be more of a bioinformatics flavor than the accompanying programming videos You might lack some intuition as to why some of these problems are important, but you should grow to appreciate them early in the course. The goal here is to present very basic bioinformatics problems and introduce a programmatic way of tackling them (possibly multiple ways), along with a Bioconductor approach. *Bioconductor* is a programming environment designed for analysis and interpretation of 'omic data. 
+
+One last note: many of these problems are *heavily* influenced by Rosalind. I highly suggest you explore the site further for a large set of incredibly rewarding programming based bioinformatics problems: http://Rosalind.info/problems/DNA/
+
+We'll start with some warmup problems to ensure that you are comfortable with R and basic programming.
+
+## Organization
+
+Each section will cover a particular topic: either a programming topic or a bioinformatics topic. No advanced understanding of biology or bioinformatics is required for these problems. They are aimed to be programming problems simply disguised as bioinformatics problems, when appicable.
+
+You will see code blocks within each section. If the top of the code block includes a header saying **#<<<>>> EXERCISE <<<>>>#**, then you are required to *complete* the code block for it to run correctly. Areas in the code block with the placeholder **###ENTERCODEHERE###** are areas you should focus. For example, if you had a problem where you asked to assign the number 5 to the variable n and then print it, you'd see
+
+```{r,eval=FALSE}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+n <- ###ENTERCODEHERE###
+print(n)
+```
+
+You'd be expected to change this block to
+
+```{r,eval=TRUE}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+n <- 5
+print(n)
+```
+
+The **#<<<>>> EXERCISE <<<>>>#** placeholders aren't intended to be the only lines you will enter code. They'll just guide you to areas you should focus. You may still need to reread the question stem a few times to ensure you tackled everything necessary to reach the correct solution. For example, had you been given
+
+```{r,eval=FALSE}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+n <- ###ENTERCODEHERE###
+```
+
+you'd still be expected to return the same answer as before, since that is what was asked in the stem.
+
+You will also see many code blocks begin with a **set.seed()** command. This ensures that any generated random numbers in your block will be both reproducible and consistant amongst your classmates. Changing the integer in the set.seed() command will cause you to have a different state and hence different random numbers, leading to different answers. 
+
+The code blocks are intended to *nearly* self contained, but a few may require some results from previous, albeit nearby, code blocks.
+
+Lastly, one important reminder, *R indexes from 0 and not 1*!
+
+# Warmup
+
+## Dataframes
+
+Running problem_dataframe() will create 3 vectors named WEIGHT, DISEASE, and SEX to your environment:
+
+```{r}
+problem_dataframe()
+```
+```{r}
+head(WEIGHT)
+head(DISEASE)
+head(SEX)
+```
+
+For the DISEASE vector, rename 1s and 0s as 'Disease' and 'Healthy', respectively. This will require indexing values that are equal to 1 or 0 and renaming them. A clever way would involve using the **ifelse()** function, but simply using logicals like == will do.
+
+After you perform the renaming, convert DISEASE and SEX to factors using the **as.factor()** function.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+DISEASE[DISEASE == 1] <- 'Disease'
+DISEASE[DISEASE == 0] <- 'Healthy'
+DISEASE <- as.factor(DISEASE)
+SEX <- as.factor(SEX)
+```
+
+Now, create a 3-column dataframe df using the **data.frame()** function that contains sex, weight, and disease (the order doesn't matter). Ensure columns are named 'Sex', 'Weight', and 'Disease'.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+DF <- data.frame(Sex=SEX,Weight=WEIGHT,Disease=DISEASE)
+```
+
+Run the following code. 
+
+```{r}
+problem_plot1(DF)
+```
+
+You should see the following figure (note that the points are jittered in the horizontal axis randomly, so your left-to-right point positions will be different):
+
+<div style="display: block; margin: left; width: 100%">
+![](https://dl.dropboxusercontent.com/u/907375/Bioinformatics_class/plot1.jpg)
+</div>
+
+## Lists
+
+Let's work with the output from a linear regression model. Don't worry if you're unfamiliar with regression; the point of this is to get a list of output that we can manipulate. Run the function **problem_regression()**, which will create the variable *out* with our regression output.
+
+```{r}
+problem_regression()
+```
+```{r}
+OUT
+```
+
+The variable **OUT** contains a list of length 12, with each slot containing different types of data -- matricies, integers, characters, etc. Use the **str()** function to see the hierarchy and slot names of the list. You can also see the uppermost slot names using the function **names()**.
+
+From **OUT**, save the **coefficients** slot as its own variable called **W**. Within **OUT**, there is a list named **model** that will be of length 2, containing 2 matricies named **x** and **y**. Set **x** in **model** as the variable **X** and **y** in **model** as the variable **Y**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+W <- OUT$coefficients
+X <- OUT$model$x
+Y <- OUT$model$y
+```
+
+After making these three variables, place **X** and **Y** into a dataframe named **DF**. Ensure the column names are 'X' and 'Y'. If not, set them as such.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+DF <- data.frame(X=X,Y=Y)
+```
+
+Now, place the dataframe **DF** and the vector **W** into a new list and name it **PLOT**. Make sure to name both slots of the list. You should therefore have a list, named **PLOT**, of length 2, with slots named **DF** and **W**, containing a dataframe and a numeric vector, respectively. You can check this using the **str()** function.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+PLOT <- list(DF=DF,W=W)
+```
+
+Place the list **PLOT** into the list **OUT**. 
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+OUT$PLOT <- PLOT
+```
+
+Run the following code:
+
+```{r}
+problem_plot2(OUT)
+```
+
+Assuming you were successful building your list, then you should have a nice regression plot:
+
+<div style="display: block; margin: left; width: 100%">
+![](https://dl.dropboxusercontent.com/u/907375/Bioinformatics_class/plot2.jpg)
+</div>
+
+## Matrices
+
+We're going to start with 2 matrices of data named **M1** and **M2**, representing patient characteristics. You can set these to your environment by running the following command:
+
+```{r}
+problem_matrix()
+```
+```{r}
+head(M1)
+head(M2)
+```
+
+Merge them by row into a matrix named **M**. The dimensions should be $2000 \times 5$, which you can check using **dim()**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+M <- rbind(M1,M2)
+```
+
+There are two NA values in the matrix, which will affect our ability to do our analysis. We need to replace them with their corresponding mean for that column. Run the following command to get the *columns* that have NA values; there will be 2.
+
+```{r}
+col_idx <- which(apply(is.na(M),2,any))
+```
+
+For each column index, index the column in **M**, which will give you a vector. Calculate the mean of the vector using the mean(x, na.rm=TRUE) function, where x is the vector for which the mean is calculated. Save each mean as a variable. You should have two new variables, each containing 1 value, a mean for its respective column.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+mui <- mean(M[,col_idx[1]],na.rm=TRUE)
+muj <- mean(M[,col_idx[2]],na.rm=TRUE)
+```
+
+We know which columns have the NA values, so, similar to above, index one of the columns as a vector, but instead of calculating the mean, use the function **which()** and save it to a new variable. Then, repeat this for the other column containing an NA value.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+rowi <- which(is.na(M[,col_idx[1]]))
+rowj <- which(is.na(M[,col_idx[2]]))
+```
+
+Save these two row indexes as a vector named **MISSING**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+MISSING <- c(rowi,rowj)
+```
+
+Now that we know which row and column these NA values are found, we can replace them with the their corresponding column means we just calculated.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+M[rowi,col_idx[1]] <- mui
+M[rowj,col_idx[2]] <- muj
+```
+
+Finally, run the following code.
+
+```{r}
+problem_plot3(M,MISSING)
+```
+
+If you are correct, then you should see the results of a PCA analysis. Assuming red crosses are seen within black triangles, then you correctly identified and correctly the NA values.
+
+<div style="display: block; margin: left; width: 100%">
+![](https://dl.dropboxusercontent.com/u/907375/Bioinformatics_class/plot3.jpg)
+</div>
+
+## For loop
+
+We're going to use functions like **seq_along()** and **seq_len()** for generating the vector of indexes to iterate over. This approach should be helpful since it'll be similar to xrange and range in Python. If you have a vector x of length 10, then seq_along(x) would result in a vector of integers ranging from 1 and 10 (*recall that R indexes from 0 and not 1*). Now, seq_len() expects an integer representing the the maximum value in the range you want to iterate over. Therefore, to get the same vector from 1 to 10, you can simply enter seq_len(length(x)), which is essentially doing seq_len(10).
+
+### Problem 1
+
+We're going to make a loop that calculates the cumulative sum from i to j. For example, if we wanted to calcualte the cumulative sum from 1 to 5, this would amount to $1 + 2 + 3 + 4 + 5 = 15$. Let's also have the loop print the current total after each iteration, specifically, each iteration j will print 'Current total on iteration j: value' on a new line. To do this, create a loop to calculate the sum and use **cat()** to print the message. 
+
+Note, to print text on a new line, use '\n', like
+
+```{r}
+cat('Some text for line:',1,'\n',
+    'Some text for line:',2,'\n')
+```
+
+Now the loop:
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+i <- 5
+j <- 25
+
+iter <- 1
+total <- 0
+for (n in i:j){
+  total <- total + n
+  cat('Current total for iteration',iter,':',total,'\n')
+  iter <- iter + 1
+}
+```
+
+Your results should be the following
+
+```{r,echo=FALSE}
+cumsum(i:j)
+```
+
+### Problem 2
+
+Your given a $25 \times 3$ matrix **M**. The first row of the matrix contains the values 1, 3, and 5. To place the matrix in your environment, run **problem_forloop2()**:
+
+```{r}
+problem_forloop2()
+```
+```{r}
+head(M)
+```
+
+Let's make a loop that does the following: starting at row 2, for each row, each element will contain the sum of the entire previous row minus the current row number and minus the current column number. Row two would therefore look like:
+
+```{r,echo=FALSE}
+MM <- M
+MM[2,] <- c(sum(M[1,]) - 1 - 2,sum(M[1,]) - 2 - 2,sum(M[1,]) - 3 - 2)
+head(MM)
+```
+
+This will require one loop (to iterate over columns) nested within another loop (to iterate over rows). The sum function is simply **sum()**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+for (i in 2:nrow(M)){
+  for (j in 1:ncol(M)){
+    
+    M[i,j] <- sum(M[i-1,]) - i - j
+    
+  }
+}
+```
+
+Your final row (25) should have the following:
+
+```{r,echo=FALSE}
+M[nrow(M),]
+```
+
+### Problem 3
+
+Let's again start with a $25 \times 3$ matrix **M** of all zeros except element $M(1,1)$, which will contain the number 1. Run **problem_forloop3()** to place **M** in your environment:
+
+```{r}
+problem_forloop3()
+```
+```{r}
+head(M)
+```
+
+Starting at row 2:
+
+* Element 1 in the current row will equal to the sum of elements 2 and 3 from the previous row
+* Element 2 in the current row will equal element 1 in the previous row
+* Element 3 in the current row will equal element 2 in the previous row
+
+For example, row 2 would look like:
+
+```{r,eval=FALSE}
+MM <- M
+MM[2,] <- c(0,1,0)
+head(MM)
+```
+
+And then row 3 would become:
+
+```{r,eval=FALSE}
+MM[3,] <- c(1,0,1)
+head(MM)
+```
+
+Like the previous problem, this will require two nested loops.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+for (i in 2:nrow(M)){
+    
+    M[i,1] <- sum(M[i-1,2:ncol(M)])
+    M[i,2] <- M[i-1,1]
+    M[i,3] <- M[i-1,2]
+
+}
+```
+
+Your final row (25) should have the following:
+
+```{r,eval=FALSE}
+M[nrow(M),]
+```
+
+## If else
+
+### Problem 1
+
+Run **problem_ifelse1()** to get a very long vector of characters **L** in your environment. 
+
+```{r}
+problem_ifelse1()
+```
+```{r}
+head(L)
+```
+
+The goal here is to find the number of times the sequence of letters spells 'BIO', the number of time it spells 'BIT', and the number of times it has the sequence 'BI' followed by any letter other than 'O' or 'T'.
+
+Let's iterate through the vector and do the following:
+
+```{r, eval=FALSE,tidy=FALSE}
+Create 3 variables, set to 0, to record the totals for the occurance of 'BIO', 'BIT',' and 'BIx' 
+  (x being a placeholder).
+
+For each position in the vector 
+
+  If the letter is 'B', check the next letter
+
+    If the letter is 'I', check the next letter
+
+      If the letter is 'O', add 1 to your bio counter
+      Elif the letter is 'T', add 1 to your bit counter
+      Else add 1 to your biX counter.
+```
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+bio <- 0
+bit <- 0
+bix <- 0
+for (i in seq_along(L)){
+  if (L[i] == 'B'){
+    if (L[i+1] == 'I'){
+      if (L[i+2] == 'O'){
+        bio <- bio + 1
+      }else if (L[i+2] == 'T'){
+        bit <- bit + 1
+      }else{
+        bix <- bix + 1
+      }
+    }
+  }
+}
+cat('bio:',bio,'\nbit:',bit,'\nbix:',bix)
+```
+
+The total of the three values should equal
+
+```{r,echo=FALSE}
+bio <- 0
+bit <- 0
+bix <- 0
+for (i in seq_along(L)){
+  if (L[i] == 'B'){
+    if (L[i+1] == 'I'){
+      if (L[i+2] == 'O'){
+        bio <- bio + 1
+      }else if (L[i+2] == 'T'){
+        bit <- bit + 1
+      }else{
+        bix <- bix + 1
+      }
+    }
+  }
+}
+bio+bit+bix
+```
+
+### Problem 2
+
+Recall problem 1 in the For Loop section. There we calculated a running total as we iterated through a sequence of numbers. Here, we'll make the following change: if the number n being added to the total is even, add n/2; if the number is odd, add n.
+
+For example, for the sequence 1 through 5, before the answer would be $1 + 2 + 3 + 4 + 5 = 15$. Now, our answer should look like $1 + 2/2 + 3 + 4/2 + 5 = 12$. Print the update message as before.
+
+Note, use the function **is_even()**, which will return TRUE for even values and FALSE otherwise.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+i <- 15
+j <- 30
+
+iter <- 1
+total <- 0
+for (n in i:j){
+  if (is_even(n)) total <- total + n/2 else total <- total + n
+  cat('Current total for iteration',iter,':',total,'\n')
+  iter <- iter + 1
+}
+```
+
+Your final value should be 
+
+```{r,echo=FALSE}
+i <- 15
+j <- 30
+
+iter <- 1
+total <- 0
+for (n in i:j){
+  if (is_even(n)) total <- total + n/2 else total <- total + n
+  iter <- iter + 1
+}
+total
+```
+
+### Problem 3
+
+Let's make a loop that checks if it's raining outside for each iteration. We'll assume an iteration is a new day. If it is raining, we'll print that it is raining and the day number. Use the function **is_raining()** to see if it's raining. Run your loop for 30 iterations and print your alerts on separate lines.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+for (i in seq_len(30)){
+   rain <- is_raining()
+   if (rain) cat("It's raining on day ",i,"!\n",sep='')
+}
+```
+
+Your results should resemble (they days will be different) the following:
+
+```{r,echo=FALSE}
+for (i in seq_len(30)){
+   rain <- is_raining()
+   if (rain) cat("It's raining on day ",i,"!\n",sep='')
+}
+```
+
+Now, let's assume we begin in town 0. On a given day, we check if it's raining and move to the next town (e.g., town 1) only if it is *not* raining. Run your loop for 60 iterations and report the town you wound up in (e.g., town 12).
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+town <- 0
+for (i in seq_len(60)){
+   rain <- is_raining()
+   if (!rain) town <- town + 1
+}
+town
+```
+
+Now, let's only move to the next town if it's not raining on the current day and didn't rain on the previous day (in the previous town). For your first iteration, assume that it didn't rain the day before. Run your loop for 60 iterations
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+town <- 0
+rain_prev <- FALSE
+for (i in seq_len(60)){
+   rain <- is_raining()
+   if (!rain & !rain_prev) town <- town + 1
+   rain_prev <- rain
+}
+town
+```
+
+Finally, we'll again start at town 0. 
+
+* If it didn't rain today but rained yesterday, we'll head north (so add 1 to your town total);
+* If it rained today but didn't rain yesterday, we'll head south (so subtract 1 from your town total). 
+* If it didn't rain today and didn't rain yesterday, we'll speed up and head north (so add 2 to your town total);
+* If it rained today and rained yesterday, we speed up a lot but head south (so subtract 4 from your total);
+
+Again assume that, for your first iteration, it didn't rain the day before. Run your loop for 1000 iterations, but record your position for each iteration.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+town <- 0
+rain_prev <- FALSE
+position <- vector(length=1000)
+for (i in seq_len(1000)){
+   
+   rain <- is_raining()
+   
+   if (!rain & rain_prev) town <- town + 1
+   if (rain & !rain_prev) town <- town - 1
+   if (!rain & !rain_prev) town <- town + 2
+   if (rain & rain_prev) town <- town - 4
+   
+   position[i] <- town
+   
+   rain_prev <- rain
+   
+}
+position <- c(0,position)
+```
+
+Run the following command to plot your results:
+
+```{r}
+problem_plot4(position)
+```
+
+An example figure (that will look different than yours) is shown below:
+
+```{r,echo=FALSE}
+town <- 0
+rain_prev <- FALSE
+position <- vector(length=1000)
+for (i in seq_len(1000)){
+   
+   rain <- is_raining()
+   
+   if (!rain & rain_prev) town <- town + 1
+   if (rain & !rain_prev) town <- town - 1
+   if (!rain & !rain_prev) town <- town + 2
+   if (rain & rain_prev) town <- town - 4
+   
+   position[i] <- town
+   
+   rain_prev <- rain
+   
+}
+position <- c(0,position)
+problem_plot4(position)
+```
+
+# Bioinformatics Problems
+
+## Base counting
+
+Given a DNA sequence, count the number of each nucleotide (A, C, G, T). Then, calculate the GC ratio (the proportion of GC content the makes up the sequence).
+
+### Data
+
+To place the DNA sequence named *s* that we'll be working with in your environment, run the following command:
+
+```{r}
+generate_dna_sequence_s()
+```
+```{r}
+s
+```
+
+### Programmatically 1
+
+Here we won't exploit the functions in R very much; instead, we'll use a loop and create a running total. This is not something I'd recommend (it's fine -- just not very direct), but it will help you with writing loops, which is critical to programming. This method can most easily be transliterated to other programming languages.
+
+We're going to make use of a function called **subseq()**, which extracts a subsequence from a larger sequence. This is analogous to the function substr(), but subseq() is a Bioconductor function that works well for sequence sets, which we'll see soon, and also has additional arguments ideal for capturing sequences from different directions. The function takes two arguments, so for subseq(s,i,j), it will capture a subsequence from **s** that spans position i through j. For example:
+
+```{r}
+sequence <- 'bioinformatics'
+subseq(sequence,start=1,end=3)
+subseq(sequence,start=4,end=7)
+subseq(sequence,start=4)
+subseq(sequence,end=-6)
+```
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+nt_A <- 0
+nt_C <- 0
+nt_G <- 0
+nt_T <- 0
+s_len <- nchar(s) 
+for (i in seq_len(s_len)){
+  
+  base <- subseq(s,i,i)
+  
+  if (base == 'A') {nt_A <- nt_A + 1}
+  if (base == 'C') {nt_C <- nt_C + 1}
+  if (base == 'G') {nt_G <- nt_G + 1}
+  if (base == 'T') {nt_T <- nt_T + 1}
+  
+}
+
+nt_total <- nt_A + nt_C + nt_G + nt_T
+gc <- nt_C + nt_G
+gc/nt_total
+```
+
+### Programmatically 2
+
+```{r}
+generate_dna_sequence_s()
+```
+
+We'll split the string into a vector where each element is a letter in the original string.
+
+```{r}
+ss <- strsplit(s,split='') 
+class(ss)
+```
+
+It returns a list which will force us to index the first element in the list to access the vector of letters (via ss[[1]]) or, alternatively, we can simply unlist the list:
+
+```{r}
+ss <- unlist(ss)
+```
+
+Now, to quickly tabulate the number of times a single letter occurs, we can use the table function:
+
+```{r}
+nt_counts <- table(ss)
+```
+
+And now we'll count the GC content by indexing the table
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+gc <- nt_counts['G'] + nt_counts['C']
+nt_total <- sum(nt_counts)
+gc/nt_total
+```
+
+### Bioconductor
+
+First thing I want to stress is that I don't recommend memorizing Bioconductor functions. Just realize that, if you have a bioinformatics problem, and need to write a little bit of code, and you are particularly worried about speed, Bioconductor exists. It's quite popular, so simply googling a few key words and 'Bioconductor' should point you in the right direction. Get acclimated with using functions and reading R documentation, and then you should be OK with using Bioconductor.
+
+```{r}
+generate_dna_sequence_s()
+```
+
+Bioconductor likes to work with its own classes, so the first thing we have to do is convert our DNA sequence into a Bioconductor DNAString class.
+
+```{r}
+ss <- DNAString(s)
+class(ss)
+```
+
+Now, let's count the bases.
+
+```{r}
+alphabetFrequency(ss)
+```
+
+We can remove those other bases by setting baseOnly to TRUE.
+
+```{r}
+alphabetFrequency(ss,baseOnly=TRUE)
+```
+
+And the GC content:
+
+```{r}
+letterFrequency(ss, letters="GC", as.prob=TRUE)
+```
+
+## DNA to RNA
+
+Let's convert that same DNA sequence above to an RNA sequence. This simply involves replacing the Ts with Us.
+
+### Programmatically 1
+
+```{r}
+generate_dna_sequence_s()
+```
+
+Again, we'll take the long way with this one, using a loop.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+ss <- unlist(strsplit(s,split=''))
+
+for (i in seq_along(ss)){
+  if (ss[i] == 'T') ss[i] <- 'U'
+}
+
+ss <- paste0(ss,collapse='')
+ss
+```
+
+### Programmatically 2
+
+```{r}
+generate_dna_sequence_s()
+```
+
+We can alternatively use regular expressions to make things very simple:
+
+```{r}
+gsub(s,pattern='T',replacement='U')
+```
+
+### Bioconductor
+
+```{r}
+ss <- DNAString(s)
+ss <- RNAString(ss)
+ss
+```
+
+## Reverse Compliment
+
+Let's now assume that a DNA sequence is about to be replicated (i.e., copied). This occurs in such a way that an A is copied as a T on the replicated sequence; Cs, Gs, and Ts are copied as Gs, Cs, and As, respectively. Also, what was the head of the original DNA strand (5') is now the the tail of the replicated strand; hence, we need to reverse the replicated sequence to get the correct reverse compliment.
+
+For example AAAACCCGGT becomes ACCGGGTTTT, and more explicitly, 5'-AAAACCCGGT-3' becomes 5'-ACCGGGTTTT-3'.
+
+```{r}
+generate_dna_sequence_s()
+```
+
+Let's get the reverse compliment of the DNA sequence we used above. Note that in the example above, we used an if statement to check if that base is T, and if it is, we change it to U. It may be enticing to start by doing the following:
+
+```{r}
+ss <- unlist(strsplit(s,split=''))
+
+for (i in seq_along(ss)){
+  if (ss[i] == 'A') {ss[i] <- 'T'}
+  if (ss[i] == 'C') {ss[i] <- 'G'}
+  if (ss[i] == 'G') {ss[i] <- 'C'}
+  if (ss[i] == 'T') {ss[i] <- 'A'}
+}
+```
+
+But this would be wrong. *Why?*
+
+# Programmatically 
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+ss <- unlist(strsplit(s,split=''))
+
+for (i in seq_along(ss)){
+  if (ss[i] == 'A'){
+    ss[i] <- 'T'
+  }else if (ss[i] == 'C'){
+    ss[i] <- 'G'
+  }else if (ss[i] == 'G'){
+    ss[i] <- 'C'
+  }else if (ss[i] == 'T'){
+    ss[i] <- 'A'
+  }
+}
+
+ss <- rev(ss) 
+ss <- paste0(ss,collapse='')
+ss
+```
+
+### Bioconductor
+
+```{r}
+generate_dna_sequence_s()
+```
+
+```{r}
+ss <- DNAString(s)
+ss <- reverseComplement(ss)
+ss
+```
+
+## FASTA Files
+
+### Loading
+
+A FASTA file is a file containing multiple nucleotide or amino acid sequences, each with their own identifier, formatted as a header that starts with '>'. A file essentially looks like
+
+```{r, eval=FALSE,tidy=FALSE}
+>Sequence_1
+GGCGAT
+>Sequence_2
+AAATCG
+```
+
+and so on. The structure of the content of the file is important, not necessarily the file extension. You can have a FASTA file with a .txt extension, no extension, or the common .fna extension. The trick is to know how these files are formatted to identify them. (Note that wikipedia tends to have the best information on bioinformatics file types, quality scoring, etc.)
+
+The other file type worth noting is FAST**Q**, which, in addition to sequence information, also contains a quality score for each position in the sequence that measures how likely that nucleotide or protein is correct. FASTQ files look somewhat different than FASTA:
+
+```{r, eval=FALSE,tidy=FALSE}
+@Sequence_1
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65
+@Sequence_2
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+9C;=;=<9@4868>9:67AA<9>65<=>59-+*''))**55CCFMNO>>>>>>FFFFC65
+```
+
+Again, for a given sequence, line 1 has the header, but unlike the FASTA file, FASTQ headers begin with '@'. Line 2 is the actual sequence, followed by '+' on line 3. The quality score is then found on line 4 and will be the same length as the sequence on line 1. 
+
+Let's load a FASTA file. We'll use a simple Bioconductor function. I could show you how to parse these files manually, but I don't think it would be very rewarding, so we'll skip that.
+
+```{r}
+fasta <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/f1fb586160d12c34f29532c731066fd8912a0e0c/example.fasta',format='fasta')
+fasta
+```
+
+For FASTQ, it's essentially the same except we change 'fasta' to 'fastq' for the format argument:
+
+```{r}
+fastq <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/f1fb586160d12c34f29532c731066fd8912a0e0c/example.fastq',format='fastq')
+fastq
+```
+
+### Creating Sequence Sets
+
+Let's approach a FASTA problem from a different direction now. We'll create a DNA string set from a bunch of individual sequences, then write the set to a FASTA file.
+
+Run the following command to add three new variables to your environment: **s1**, **s2**, and **s3**. Each represents a different DNA sequence or 'read.'
+
+```{r}
+problem_createsequencesets()
+```
+```{r}
+s1
+s2
+s3
+```
+
+We're going to create a DNAStringSet object, which can then be saved as a FASTA file. First, we have to combine the sequences into a vector and then pass this vector into **DNAStringSet()**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+S <- c(s1,s2,s3)
+SS <- DNAStringSet(S)
+SS
+```
+
+Recall that FASTA files have header names. Let's create header names for these three sequences. We can manually do it like so
+
+```{r}
+c('sequence_1','sequence_2','sequence_3')
+```
+
+but this will be far from ideal if we had, say, 100,000 sequences. Instead, we're going to use a function called **paste()**, which basically pastes together vectors of text, element-wise:
+
+```{r}
+DOG <- c('dog1','dog2','dog3')
+CAT <- c('cat1','cat2','cat3')
+paste(DOG,CAT)
+paste(DOG,CAT,sep='-')
+paste(DOG,CAT,sep='_')
+paste(DOG,CAT,sep='')
+```
+
+We can clean this up a little by simply passing a vector spanning the numbers 1 through 3, along with 'dog' and 'cat':
+
+```{r}
+paste('dog','cat',1:3,sep='')
+paste('dog','cat',1:3,sep='_')
+paste('dog_','cat',1:3,sep='')
+```
+
+This is how we'll create our header names. We can grab the number of total sequences in our set using length(), which will let us create a vector to number our sequences. We'll create a header name that includes each sequence number, the word sequence, along with a user name. We'll also pass in the date using the **date()** function.
+
+```{r}
+seq_names <- paste('sequence_',1:length(SS),' | User_12 | ',date(), sep='')
+seq_names
+```
+
+Now, we'll rename the sequences in the set with these names:
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+names(SS) <- seq_names
+SS
+```
+
+Finally, we can save our sequence set as a FASTA file:
+
+```{r,eval=FALSE}
+output_name <- 'seq_set_out.fasta'
+writeXStringSet(SS,file=output_name,format="fasta")
+```
+
+### Sample Metadata
+
+Often, the sequences we're working with have corresponding metadata. These metadata can range from information about the specific sequence (e.g., the type of sequencer used) to information about the organism from which the sequence was acquired (e.g., species, treatment, age). The way in which we can link our sequence reads in the FASTA file to the metadata is via the header name.
+
+Load the following sequence set:
+
+```{r,warning=FALSE}
+FASTA <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/10bc2f50d1c739827ea2ba4edb146b36a6a4c14a/problems_metadata.fasta',format='fasta')
+FASTA
+```
+
+To place the metadata, named **META**, into your environement, run the following:
+
+```{r}
+problem_metadata(FASTA)
+```
+```{r}
+head(META)
+```
+
+We'll henceforth refer to the rows as 'samples.' If we want to know which samples were sequenced at the Philadelphia sequencing center, we can type
+
+```{r}
+which(META$Center == 'Philadelphia')
+```
+
+If we wanted to find the sequence with the header name 'Rosalind_6333', we can do
+
+```{r}
+FASTA['Sequence_6333']
+```
+
+And if we wanted to get the sequences corresponding to rows 12, 15, and 78 in the metadata file:
+
+```{r}
+header_names <- META$ID[c(12,15,78)]
+FASTA[header_names]
+```
+
+Using this information, 
+
+1. *Print the sequences and header names of the samples that were sequenced in Princeton*
+2. *Print the sequences and header names of the Staphylococcus samples that were sequenced in Austin.*
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+FASTA[META$ID[which(META$Center == 'Princeton')]]
+FASTA[META$ID[which(META$Center == 'Austin' & META$Genus == 'Staphylococcus')]]
+```
+
+## GC Content
+
+The goal here is to determine the DNA sequence with the greatest proportion of *GC content*. Now that we can load FASTA files, we can calculate the GC content for each sequences in a set of sequences. 
+
+First, we'll load the sequences:
+
+```{r}
+FASTA <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/9aaa235924c3ba097716da40dbec745f6bd41fb0/problems_gc.fasta')
+FASTA
+```
+
+Now let's first tackle this a more programmatic way, first making our own function to calculate the GC content, and then determining which is greatest. 
+
+# Programmatically
+
+Let's make that function to calculate the GC content for a given sequence:
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+gc_content <- function(s){
+  
+  ss <- unlist(strsplit(as.character(s),''))
+  gc <- 0
+  
+  for (i in seq_along(ss)){
+    if (ss[i] == 'G' || ss[i] == 'C') gc <- gc + 1
+  }
+  
+  return(gc/length(ss))
+
+}
+```
+
+Now note that we can treat this DNAStringSet class as a list, such that FASTA[[1]] will index the first sequence, FASTA[[2]] the second, and so on. 
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+GC <- vector(length=length(FASTA))
+for (i in seq_along(FASTA)){
+  
+  GC[i] <- gc_content(FASTA[[i]])
+  
+}
+```
+
+And now which one has the max GC?
+
+```{r}
+max_ind <- which.max(GC)
+FASTA[max_ind]
+```
+
+### Bioconductor
+
+The nice thing about Bioconductor is that many of its functions are vectorized, so we can simply do this:
+
+```{r}
+GC <- letterFrequency(FASTA, letters="GC", as.prob=TRUE)
+max_ind <- which.max(GC)
+FASTA[max_ind]
+```
+
+## Hamming Distance and Point Mutations
+
+Let's say we were given two sequences and we wanted to compare them. One approach is to calculate the *Hamming distance*, which is basically a running total of the mismatches between bases in the same position in their respective sequences. For example, if sequence A is AATT and sequence B is AGTT, then $\text{hd}(A,B) = 1$. If sequence C is AGGT, then $\text{hd}(A,C) = 2$. Let's write a Hamming distance script using loops and vectors, and then we'll use Bioconductor.
+
+### Programmatically 1
+
+Add the two sequences, **s1** and **s2**, to your environment by running the following:
+
+```{r}
+problem_hamming()
+```
+
+```{r}
+s1
+s2
+```
+
+Use a loop to calculate the Hamming distance between **s1** and **s2**. (Recall the subseq() function):
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+n_seq <- nchar(s1)
+
+hd <- 0
+for (i in seq_len(n_seq)){
+  
+  if(subseq(s1,i,i) != subseq(s2,i,i)) {hd <- hd + 1}
+  
+}
+
+hd
+```
+
+### Programmatically 2
+
+And a different approach might be:
+
+```{r}
+mm <- unlist(strsplit(s1,'')) != unlist(strsplit(s2,''))
+hd <- sum(mm)
+```
+
+### Bioconductor
+
+```{r}
+seqs <- c(s1,s2)
+ss <- DNAStringSet(seqs)
+stringDist(ss,method='hamming')
+```
+
+## Finding substrings
+
+Given a DNA sequence, it's often necessary to find an important subsequence within a larger sequence. If we were given a sequence, let's locate a target subsequence and return its position. If, say, we were given AATATAGCAT, then AAT would be base positions 1, 2, 3, and so on. If then we were asked to locate TAG, we can report it as being in position 5 (i.e., just reporting the start position).
+
+### Programmatically 1
+
+First, let's load the data. Run **problem_substrings()** to add **S**, a DNA sequence, and **s**, a corresponding subsequence found *within* **SS** that we which to locate.
+
+```{r}
+problem_substrings()
+```
+```{r}
+S
+s
+```
+
+We want to compare our subsequence **s** of length **k** to all sequential subsequences in **S** of the same length as **s**. For example, we will use a loop and, on the first iteration, compare **s** to GTTAGTACC, on the second iteration compare **s** to TTAGTACCA, and so on. The first thing we need to do is determine the number of iterations we need, which will amount to the number of sequential subsequences of length **k** there are in **S**. This is a *kmer* problem, where a kmer is a subsequence of length **k** present in a larger sequence. For our purposes, this is a `r nchar(s)`-mer problem because
+
+```{r}
+nchar(s)
+```
+
+Now, let's define the length of **S** as **N** (and we already defined **k** as the length of **s**). Given that N is `r nchar(S)` and k is `r nchar(s)`, 
+
+1. *Determine how many iterations are required to iterate over all `r nchar(s)`-mers in **S**. (Note that this is essentially how many `r nchar(s)-mers are in **S**.)* 
+2. *Come up with a formula to calculate the number of kmers for a given **S**.*
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+N <- nchar(S)
+k <- nchar(s)
+
+pos <- NULL
+for (i in seq_len(N-k+1)){
+  
+  ss <- subseq(S,i,i+k-1)
+  
+  if (s == ss) pos <- c(pos,i)
+  
+}
+
+pos
+```
+
+### Bioconductor
+
+```{r}
+SS <- DNAString(S)
+matchPattern(s,SS)
+```
+
+## Transition:Transversion Ratio
+
+*Point mutations* are changes in nucleotide bases in a DNA sequence. A *transition* is a point mutation between A and G (so G to A or A to G) or C and T. A *transversion*, on the other hand, occurs between A and T or C and G. (Note this has to do with pyrimidines and purines. If you know what they are, then this will make complete sense to you; otherwise, it will later it in the course.)
+
+Let's calculate the ratio of transitions to transversions given two DNA sequences. To do this, we simply compare a pair of bases at each position to see if they contain either a transition or tranversion and record a running total as we iterate along.
+
+### Programmatically 1
+
+Run **problem_ttratio()** to add the two DNA sequences, **s1** and **s2**, to your environment:
+
+```{r}
+problem_ttratio()
+```
+```{r}
+s1
+s2
+```
+
+And now let's compute the transition:transversion ratio:
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+n_seq <- nchar(s1)
+
+pu <- c('A','G')
+py <- c('C','T')
+
+ts <- 0
+tv <- 0
+for (i in seq_len(n_seq)){
+  
+  b1 <- subseq(s1,i,i)
+  b2 <- subseq(s2,i,i)
+  
+  if (b1 != b2){
+    
+    if (((b1 %in% pu) & (b2 %in% pu))  || ((b1 %in% py) & (b2 %in% py))){
+      ts <- ts + 1
+    }else{
+      tv <- tv + 1
+    }
+    
+  }
+  
+}
+
+ts/tv
+```
+
+## Shared Motif
+
+If we were given a set of sequences, it might be informative to find the *largest* subsequence shared among all sequences in the set. In other words, we may want to find a kmer of length **k** that each sequence contains. This requires us to not only search each sequence for a specific kmer, but we have to do this for kmers of all sizes **K**.
+
+### Programmatically
+
+We'll tackle with problem using sequences in FASTA format, so we have to load them.
+
+```{r}
+FASTA <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/86c440446c6592f7472acf3768d33e9942837282/problems_motif.fasta')
+FASTA
+```
+
+We'll set one sequence, named **R**, as the sequence we compare all other sequences **S** to. Since we are looking for a *shared* subsequence, present in *all* **M** sequences, it doesn't matter which reference sequence we choose.
+
+```{r}
+R <- as.character(FASTA[1])  # reference sequence
+S <- as.character(FASTA[-1]) # set of remaining sequences
+```
+
+Now, one thing I'll note, we need to be somewhat careful about how we write this code. If we use too many loops, or fail to toss redundant kmers, this script will take a very long time and hence will be useless. 
+
+For instance, for a given kmer, we have to compare a kmer in our reference sequence **s** to a sequence $S_1$ in our sequence set **S**. If the kmer is present in both, we move on to the next sequence $S_2$ in **S**, and so on. But if that kmer is not in $S_1$, then we should *break* the loop and move to a different kmer. It's a waste of time iterating through the remaining sequences in **S** because our target shared sequence must be shared among **s** and  *all* sequences in **S**. 
+
+Another potential problem are redundent kmers within a given sequence. These sequences are pretty long. If we were working with, say, 10-mers, a particular 10-mer is probably present multiple times in a sequence. We want to ensure that when we compare **s** to a sequence in **S**, that we only compare **s** to unique kmers in, say, $S_1$. 
+
+We'll start by making a function that calculates all of the unique kmers for a given **k** in a reference sequence **R**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+get_kmers <- function(reference, k){
+  N <- nchar(reference)
+  N_kmers <- N-k+1
+  
+  kmers <- vector(length=N_kmers)
+  for (i in seq_len(N_kmers)){
+    
+    kmers[i] <- subseq(reference,i,i+k-1)
+    
+  }
+  
+  kmers <- unique(kmers)
+  
+  return(kmers)
+}
+```
+
+Now, we'll use this function in our loop. Again, the goal here is to find the largest subsequence present in all sequences in the set **S**, along with with our reference sequence **R**.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+N_Ref <- nchar(R)
+N_Set <- length(S) # number of remaining sequences in set
+
+motif <- NULL
+for (k in seq(N_Ref-1,2)){
+  
+  R_kmers <- get_kmers(R,k)
+  
+  for (n in seq_along(S)){
+   
+    S_kmers <- get_kmers(S[n],k)
+    
+    R_idx <- which(R_kmers %in% S_kmers)
+    
+    if (length(R_idx) == 0){
+      
+      break
+      
+    }else{
+      
+      R_kmers <- R_kmers[R_idx]
+      
+    }
+     
+  }
+
+  if (n == N_Set) {
+    
+    motif <- R_kmers
+    
+    break
+  
+  }
+  
+}
+
+motif
+```
+
+## Translation
+
+Let's now deal with translating RNA to a sequence of amino acids. If we are given an RNA sequence, we simply have to lookup triplets of nucleotides, called *codons*, in a lookup table to indentify the corresponding amino acid. The first codon we look for is a *start* codon, AUG, which begins the tranlation process. We continue translating until we reach a *stop* codon.
+
+### Programmatically
+
+First, we'll load the amino acid table **CODONS** into our environment:
+
+```{r}
+aa_table_translation()
+```
+```{r}
+head(CODONS)
+```
+
+CODONS is a dataframe where each row name is a codon. Now that it's loaded, let's load the RNA sequence **s** into our environment:
+
+```{r}
+problem_translation()
+```
+
+We kept it simple such that the first codon is the start codon; nevertheless, the function below, **regexpr()**, finds AUG and returns the position. Had the start codon not been at the beginining of the sequence, and hence we had to find its location, this would have been a simple way to do it.
+
+The plan here is to simply make a loop that iterates over each codon in the sequence, translates it using the amino acid table, and returns the amino acid. Each iteration will check for a stop codon using an if statement. If it finds one, it runs a command called break, which will terminate the loop.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+start <- regexpr('AUG',s)
+ss <- subseq(s,start,nchar(s))
+
+N_kmers <- nchar(ss) + 3 - 1
+
+pp <- NULL
+for (i in seq(1,N_kmers,3)){
+  
+  codon <- subseq(ss,i,i+3-1)
+  aa <- CODONS[codon,]$aa
+  
+  if (aa == 'Stop') break
+  
+  pp <- c(pp,CODONS[codon,]$aa)
+  
+}
+paste0(pp,collapse='')
+```
+
+### Bioconductor
+
+```{r}
+ss <- RNAString(s)
+translate(ss)
+```
+
+## Consensus Sequences
+
+So we're given a bunch of DNA sequences, all of the same length, and we want to find a sequence that best represents the set as a whole. We can think of this target sequence as an 'average sequence.' What is one way of going about this? Well, we can calculate the most common base at each position across all sequences For example, for position 1, we count the number of As, Cs, Gs, and Ts across our set of DNA sequences. Whichever base is most common will be our base at that position in our consensus sequence. See below:
+
+```{r,eval=FALSE,tidy=FALSE}
+AAGTC
+ACCTT
+CTACC
+AGCAT
+TTTTA
+```
+
+The consensus sequence would be ATCTT. Let's load the FASTA file.
+
+```{r}
+FASTA <- readDNAStringSet('https://gist.githubusercontent.com/sw1/8870a124624f31585d5c15be72fcfc21/raw/0794c27c7753a8bd1a083d18d47fb4c6c693dd51/problems_consensus.fasta')
+FASTA
+```
+
+Our first step will be to create an empty matrix with 4 rows (for each base) and a column for each positions in our sequences. Note that all of the sequences in the set are of the same length.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+cons <- matrix(0,4,width(FASTA)[1])
+rownames(cons) <- c('A','C','G','T')
+```
+
+The plan now is to create a for loop where each iteration will focus on one of the sequences in our set. For a given iteration i, we'll split the $\text{sequence}_i$ into a vector of characters, allowing us to easily index each base in the sequence. Then, we'll use another loop to loop through this vector of bases and add 1 to the element in the matrix corresponding to the nucleotide and the position in the DNA strand.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+N <- length(FASTA)
+for (i in seq_len(N)){
+  
+  seq_i <- as.character(FASTA[[i]])
+  s <- strsplit(seq_i,'')[[1]]
+  
+  for (j in seq_along(s)){
+    cons[s[j],j] <- cons[s[j],j] + 1
+  }
+  
+}
+```
+
+The final step is to identify the most common base in each position, using a loop.
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+cons_seq <- vector(length=ncol(cons))
+for (i in seq_len(ncol(cons))){
+  cons_seq[i] <- which.max(cons[,i])
+}
+cons_seq <- rownames(cons)[cons_seq]
+cons_seq <- paste0(cons_seq,collapse='')
+cons_seq
+```
+
+## Dynamic Programming
+
+Let's try and write a script that can solve a potentially computationally burdonsome problem -- a problem involving reproducing rabbits. Say we start with 1 baby rabbit (age 0) at month 1. When the rabbit reaches 1 month of age, it can reproduce, producing a new baby rabbit the folloing month (month 3). On month 4, the baby rabbit can now reproduce, but our original rabbit will also reproduce, and so on. The rules are therefore
+
+* Rabbits age each month
+* Baby (age 0) rabbits cannot reproduce
+
+And here is a diagram showing the process:
+
+<div style="display: block; margin: auto; width: 60%">
+![](rabbits1.png)
+</div>
+
+Now focus on the number of rabbits for each month: 1, 1, 2, 3, 5, 7. It's the fibonacci sequence, where the current months total is a sum of the previous month's total. We can therefore make a function that can *recursively* calculate the number of rabbits, using the finonacci sequence, only requiring the number of months the process will span across.
+
+A quick aside: recursive algorithms are hard. They take some work to get a hang of them. I would not worry about either trying to write recursive algorithms or completely understanding how the code below works. The point of showing them is that there's often a natural way to tackle a programming problem, but it's not necessarily always the *best* way.
+
+```{r}
+fib <- function(n){
+  
+  if (n==1 || n==2){
+    return(1)
+  }else{
+    return(fib(n-1) + fib(n-2))
+  }
+  
+}
+
+fib(5)
+
+for (n in seq_len(25)) cat(fib(n),' ')
+```
+
+Let's change the problem a little bit. Let's assume now that the rabbits can die after k months. For $k=3$, we'd have the following process:
+
+<div style="display: block; margin: auto; width: 60%">
+![](rabbits2.png)
+</div>
+
+We can write another recurssive algorithm to tackle this:
+
+```{r}
+lifespan_inner <- function(n,y,Y){
+
+  if (n==1){
+    return(1)
+  }else if (y==Y){
+    return(lifespan_inner(n-1,y-1,Y))
+  }else if(y==1){
+    lifespan_inner(n-1,Y,Y)
+  }else{
+    return(lifespan_inner(n-1,y-1,Y) + lifespan_inner(n-1,Y,Y))
+  }
+  
+}
+
+lifespan <- function(n,y){
+   
+  return(lifespan_inner(n,y,y))
+   
+}
+
+for (n in seq_len(25)) cat(lifespan(n,3),' ')
+```
+
+But look how much time it takes if we ramp up the number of months to 60:
+
+```{r,eval=FALSE}
+t1 <- Sys.time()
+for (n in seq_len(60)) cat(lifespan(n,3),' ')
+t2 <- Sys.time()
+cat('Time elapsed:',round(t2-t1,1),'minutes.')
+```
+```{r,echo=FALSE}
+cat('Time elapsed:',5.3,'minutes.')
+```
+
+It's slow!
+
+Now we'll use a *dynamic programming* approach. You're going to need dynamic programming later in the course for genomic sequence alignment, so it's worthexploring the type of speedup one can obtain with a quite intuitive method, particularly when aimed at computationally demanding tasks often seen in genomics.
+
+Briefly, dynamic programming saves a ton of time and resources by sweeping through a problem as a set of smaller subproblems, while storing the results of each subproblem as you go. Think about the rabbit flow chart. If we wanted to know the number of rabbits present on month 1000, we'd have to add months 999 and 998 together, which require information from months 996 through 998, and so on. A recursive algorithm would calculate the result of 999 independently of 998, and *then* add them together. Dynamic programming, on the other hand, would have the results from those previously months stored, simply requiring us to look them up.
+
+The game here involves the following:
+
+1. Make a $n \times y$ matrix M, where n is the number of months and y is the rabbit's lifespan.
+2. Row 1 will represent month 1, column 1 will represent baby rabbits, and column y will represent the final month of life for an adult rabbit.
+3. Each subsequent row will be a running tally of the number of rabbits in each age group. Because each month is updated sequentially, you only need the information of a previous row (month) to update a current row (month).
+
+```{r}
+########################
+#<<<>>> EXERCISE <<<>>>#
+########################
+
+dynprog <- function(m,y){
+   
+   mat <- matrix(0,m,y)
+   mat[1,1] <- 1
+   
+   for (i in 2:m){
+      y1 <- mat[i-1,]
+      y2 <- mat[i,]
+      
+      y2[1] <- sum(y1[-1])
+      y2[-1] <- y1[-y]
+      
+      mat[i-1,] <- y1
+      mat[i,] <- y2
+   }
+   
+   return(rowSums(mat))
+}
+```
+
+Here are some example answers to check. Note that there may be some variability given the max integer number in R, which is set in the options. If you get the right answer for smaller parameterizations, then your code is correct.
+
+```{r,echo=FALSE}
+dynprog <- function(m,y){
+   
+   mat <- matrix(0,m,y)
+   mat[1,1] <- 1
+   
+   for (i in 2:m){
+      y1 <- mat[i-1,]
+      y2 <- mat[i,]
+      
+      y2[1] <- sum(y1[-1])
+      y2[-1] <- y1[-y]
+      
+      mat[i-1,] <- y1
+      mat[i,] <- y2
+   }
+   
+   return(rowSums(mat))
+}
+```
+```{r}
+dynprog(25,5)[25]
+dynprog(50,5)[50]
+dynprog(70,8)[75]
+```
+
+*Report the total rabbits after 50 months with a lifespan of 35*.
+

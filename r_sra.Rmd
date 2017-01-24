@@ -1,0 +1,84 @@
+---
+title: "Retrieving Projects"
+author: "SW"
+date: "1/8/2017"
+output: html_document
+---
+
+Many of your projects will involve working with publically available data from published research. The data itself is typicaly uploaded to a data repository like NCBI or EMBL/EBI. The files are deposited as Sequence Read Archive (SRA) files and are often searchable as bioprojects. Accessing these files can be accomplished using Bioconductor in R.
+
+```{r,warning=FALSE,message=FALSE}
+library(stringr)
+library(SRAdb)
+```
+
+First, download the database file to our working directly from the following link: http://dl.dropbox.com/u/51653511/SRAmetadb.sqlite.gz . Note that it's over 1 GB compressed, but will be about 24 GBs once you uncompress it, which you need to do.
+
+Then, we'll make a connection with the database:
+
+```{r,warning=FALSE,message=FALSE}
+sqlfile <- '~/SRAmetadb.sqlite'
+sra_con <- dbConnect(SQLite(),sqlfile)
+```
+
+Let's assume we want to download the data from the Gevers IBD study that was deposited with the following accession: PRJNA237362. We can see this project on NCBI here: https://www.ncbi.nlm.nih.gov/bioproject/PRJNA237362 . If we click the link next to 'SRA Experiments' and then click one of the sample links on the subsequent page, we'll end up on a page that looks like this: https://www.ncbi.nlm.nih.gov/sra/SRX1418176[accn] . Here' we can access the SRA project code: SRP040765. This is what we need.
+
+Before we continue, let me go over the SRA file types:
+
+* SRA - Accession information that contains the 5 files below
+* SRP - Project information and metadata
+* SRS - Sample metadata
+* SRX - Experiment metadata including library, platform selection, and processing parametes involved in a particular sequencing experiment
+* SRR - Sequencing run information
+* SRX - Sequence analysis BAM file information
+
+Now that we have the SRP, let's acquire the files we need, specifically the SRA files:
+
+```{r}
+rs <- listSRAfile(c('SRP040765'), sra_con, fileType = 'sra')
+str(rs)
+```
+
+**rs** is a dataframe containing the SRP, SRS, SRX, and SRR IDs for a given sequencing run, as well as the ftp link to the actual .sra file containing the sequencing information. These are the links we can use to download the entire set of data we need to perform some analysis.
+
+Now, we could export these links and then just iterate through, maybe using bash with wget, to download all of these files. Alternatively, we can do the following:
+
+We'll get a run ID for a run we'ld like to download:
+
+```{r}
+run <- rs$run[1]
+run
+```
+
+Then, we'll download the .sra file.
+
+```{r}
+getSRAfile(run, sra_con, fileType = 'sra',destDir='~')
+```
+
+If we want the specific SRR (run) information, we do:
+
+```{r}
+run_info <- getSRA(search_terms='SRP040765', out_types=c('run'),sra_con)
+str(run_info)
+```
+
+and for the SRS (sample) information:
+
+```{r}
+sample_info <- getSRA(search_terms='SRP040765', out_types=c('sample'),sra_con)
+str(sample_info)
+```
+
+and SRX (experiment) information:
+
+```{r}
+experiment_info <- getSRA(search_terms='SRP040765', out_types=c('experiment'),sra_con)
+str(experiment_info)
+```
+
+Using these commands, you should be able to download the .sra files you need along with all corresponding metadata to do analysis. Still, you might be wondering how you get the .fasta files from the .sra file. Well, the easiest way is to use something called the sra toolkit, which can be found here: https://www.ncbi.nlm.nih.gov/books/NBK158900/ . It's a command line tool, but you can run command line commands through are via the system() command:
+
+```{r}
+system('pwd')
+```
