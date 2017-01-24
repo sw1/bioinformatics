@@ -1,0 +1,191 @@
+---
+title: "Dada2"
+author: "SW"
+date: "1/24/2017"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(ggplot2)
+library(dada2)
+library(gridExtra)
+library(DECIPHER)
+library(ape)
+library(phangorn)
+library(phyloseq)
+```
+
+```{r,include=FALSE}
+CONDA <- Sys.getenv('CONDA')
+validate_mapping_file <- file.path(CONDA,'validate_mapping_file.py')
+split_libraries_fastq <- file.path(CONDA,'split_libraries_fastq.py')
+split_sequence_file_on_sample_ids <- file.path(CONDA,'split_sequence_file_on_sample_ids.py')
+```
+
+## FASTQ Prep
+
+We're going to use the same data as we did with QIIME. Dada2 requires individual fastq files for each sample, so we'll split our single fastq file using a few QIIME commands.
+
+```{r}
+data_dir <- '~/Bioinformatics/data_moving_pictures'
+
+MAP <- read_delim(file.path(data_dir,'map.tsv'),'\t')
+```
+
+Note that now we are forcing the split libraries commamnd to also return a demultiplexed fastq file:
+
+```{r}
+system2(split_libraries_fastq,args=c('-o',file.path(data_dir,'fastq_out_3'),
+                                     '-i',file.path(data_dir,'forward_reads.fastq.gz'),
+                                     '-b',file.path(data_dir,'barcodes.fastq.gz'),
+                                     '-m',file.path(data_dir,'map.tsv'),
+                                     '-q','20', 
+                                     '--store_demultiplexed_fastq'))
+```
+
+Next, we'll split these fastq file into separate files for each sample:
+
+```{r}
+system2(split_sequence_file_on_sample_ids,args=c('-i',file.path(data_dir,'fastq_out_3','seqs.fastq'),
+                                                 '-o',file.path(data_dir,'fastq_out_3','sequences'),
+                                                 '--file_type','fastq'))
+```
+
+## OTU Picking
+
+We're now going to run through the dada2 workflow. Dada2 is a *reference free* method, so this is analogous to de novo OTU picking had we used QIIME. Still, we can cluster our resulting count table into OTUs using a reference database; hence, we can compare our results.
+
+Dada2 captures metagenomic variation by exploiting illumina sequencing errors. Briefly, everything is based on an error model (a Poisson distribution). A given read is defined as a *sample* sequence and is compared to all other reads. The model calculates the probability these reads were generated from the sample sequence given the error model -- that is, the probability that these reads resulted from independent sequencing errors that were generated based on given transition probabilities and quality scores. If a set of reads are too abundant to be explained by this error model, then they are separated into their own partition. The game is to continuously partition the reads until each partition is consistent with the error model, allowing us to separate true biological variation from the variation solely due to sequencing error. At this point, the abundance of reads within a partition can be calculated, giving us an abundance table. We can then compare the sequences associated with a given partition to a reference database to assign taxonomy.
+
+```{r}
+fqs <- list.files(file.path(data_dir,'fastq_out_3','sequences'),full.names=TRUE)
+```
+
+The first thing we'll do is plot the quality scores as a function of base position. If you recall the definition of Q from the QIIME tutorial, this should make sense to you, and it should also help you appriciate setting those parameters for quality filtering before.
+
+```{r}
+sample_idx <- sample(length(fqs),5)
+for (i in sample_idx) print(plotQualityProfile(fqs[i]))
+```
+
+Per the Holmes group, illumina datasets often have errors in the first 10 base positions. Also, given the plots above, there seems to be a drop in quality towards the end of each read. Hence, we'll trim our reads such that we keep bases 10 through 130.
+
+```{r}
+fqs_filt <- gsub('sequences','filtered',fqs)
+dir.create(gsub('(filtered).*','\\1',fqs_filt[1]),showWarnings=FALSE)
+for (i in seq_along(fqs)){
+  fastqFilter(fqs[i],fqs_filt[i],
+              trimLeft=10, truncLen=130,
+              maxN=0, maxEE=2, truncQ=2,
+              compress=TRUE)
+}
+```
+
+The following command performs dereplication, returning a set of unique sequences and abundances from our set of fastq files.
+
+```{r}
+derep <- derepFastq(fqs_filt)
+names(derep) <- sapply(strsplit(basename(fqs_filt), "_"), `[`, 1)
+```
+
+Now, we'll run the dada error model on a subset of our sequences. Estimating the error rates to parameterize the model is costly, so it's recommended to do this on a subset of the data, and then use these parameter estimates for the complete set:
+
+```{r}
+dd_err <- dada(derep[1:20], err=NULL, selfConsist=TRUE)
+```
+We can visualize the error estimates. This shows the frequency of each base transition as a function of quality score.
+
+```{r}
+plotErrors(dd_err,err_in=TRUE,nominalQ=TRUE)
+```
+
+We'll now fit the full error model, using the estimated error rates from our subset of data. This step can be parallelized using the multihread argument. We're also going to pool across samples, since this improves the detection of variants that are rare in a specific sample but less rare overall, but at a computational cost.
+
+```{r}
+dd <- dada(derep, err=dd_err[[1]]$err_out, pool=TRUE)
+```
+
+Finally, we'll make our sequence table.
+
+```{r}
+seqtab_all <- makeSequenceTable(dd)
+```
+
+And then we'll remove chimeras. This function compares sequences against one another, and removes sequences that can be generated by joining two abundant sequences.
+
+```{r}
+seqtab <- removeBimeraDenovo(seqtab_all)
+```
+
+We now have a sequence abundance table that is similar in form to the OTU table we generated in QIIME, except our 'taxonomic variants' are unique sequences and *not* OTUs:
+
+```{r}
+seqtab[1:5,1:5]
+```
+
+If we want to assign taxonomy from a reference database to these sequences, we can use the following command that applies a naive Bayes classifer to compare our sequences to classified sequences in a training set. First, we'll use a GreenGenes training set:
+
+```{r}
+ref_fasta <- '~/Bioinformatics/data_stability/references/gg_13_8_train_set_97.fa.gz'
+taxtab_gg <- assignTaxonomy(seqtab, refFasta=ref_fasta)
+colnames(taxtab_gg) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+```
+
+Now, instead, we can try a Silva training set. Note that Silva does not give species level assignments
+
+```{r}
+ref_fasta <- '~/Bioinformatics/data_stability/references/silva_nr_v123_train_set.fa.gz'
+taxtab_silva <- assignTaxonomy(seqtab, refFasta=ref_fasta)
+colnames(taxtab_silva) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+```
+
+If we want species level assignments, we can do the following.
+
+```{r}
+ref_fasta <- '~/Bioinformatics/data_stability/references/rdp_species_assignment_14.fa.gz'
+sptab_silva <- assignSpecies(seqtab, refFasta=ref_fasta, allowMultiple=FALSE, verbose=TRUE)
+```
+
+Next, we might want to build a phylogenetic tree. First, we perform a multiple sequence alignment:
+
+```{r}
+seqs <- getSequences(seqtab)
+names(seqs) <- seqs
+alignment <- AlignSeqs(DNAStringSet(seqs), anchor=NA)
+```
+
+Then, we'll build a tree, specifically, a maximum likelihood tree from a NJ tree.
+
+```{r}
+phang_align <- phyDat(as.matrix(alignment), type="DNA")
+dm <- dist.ml(phang_align)
+treeNJ <- NJ(dm) # Note, tip order != sequence order
+fit = pml(treeNJ, data=phang_align)
+
+fit_gtr <- update(fit, k=4, inv=0.2)
+fit_gtr <- optim.pml(fit_gtr, model="GTR", optInv=TRUE, optGamma=TRUE,
+                      rearrangement = "stochastic", control = pml.control(trace = 0))
+```
+
+And finally, we can build our phyloseq object for our GreenGenes table:
+
+```{r}
+TREE <- phy_tree(fit_gtr)
+
+META <- as.data.frame(MAP)
+row.names(META) <- META$`#SampleID`
+
+OTU <- seqtab
+rownames(OTU) <- gsub('\\.fastq','',rownames(OTU))
+OTU <- OTU[rownames(META),]
+OTU <- otu_table(OTU,taxa_are_rows=FALSE)
+  
+META <- sample_data(MAP)
+OTU <- otu_table(seqtab,taxa_are_rows=FALSE)
+
+TAXA <- taxtab_gg[colnames(OTU),]
+TAXA <- tax_table(TAXA)
+
+PS <- phyloseq(OTU,TAXA,META,TREE)
+```
