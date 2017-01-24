@@ -47,7 +47,7 @@ Note the sequence header names; they have an interesting format, for examples
 HWI-EAS440_0386:1:23:17547:1423#0/1
 ```
 
-If you look at the figure below, you can see a detailed explaination of what this all means if you are interested, but it is information from illumina sequencing. Basically, when we sequence samples using illumina, we sequence multiple samples in a single flowcell lane to save money. These header have some of that lane information encoded in them.
+If you look at the figure below, you can see a detailed explaination of what this all means if you are interested, but it is information from illumina sequencing. Basically, when we sequence samples using illumina, we sequence multiple samples in a single flowcell lane to save money. These headers have some of that lane information encoded in them.
 
 ![Seq id](/Figures/seq_id.png)
 
@@ -145,7 +145,6 @@ The default **phred_quality_threshold** Q is 3, implying $P=10^{-3/10}=.5$, or t
 
 There is also a setting called **phred offset**, which you typically need not worry about (it's automatically set), but is worth knowing what it represents:
 
-
 ![Phred offset](/Figures/phred_offset.png)
 
 I'd argue that something along the lines of Q=20 or greater makes more sense. Here, we'll truncate at consecutive stretches of base calls where each call has 1% probability of being an error.
@@ -160,7 +159,7 @@ system2(split_libraries_fastq,args=c('-o',file.path(data_dir,'fastq_out_2'),
 
 We'll now perform OTU picking on our filtered, demultiplexed sequences. There are a ton of parameters we can adjust: http://qiime.org/scripts/pick_otus.html. To keep it somewhat simple, we'll perform a particular kind of OTU picking called 'closed.' There are 3 OTU picking strategies: closed, open, and de novo. 
 
-Closed reference OTU picking is fast because it simply clusters sequences into OTUs based on reference sequences found in a database. If a sequence doesn't match above a given similiary threshold to the database sequence, it is tossed away. It should probably be obvious if a given sequence isn't found in the reference database, it too will be removed. De novo, on the other hand, can deal novel sequences since it doesn't use a lookup database. Instead, it clusters sequences by aligning them against one another, with sequences above a given similarity threshold are clustered into OTUs. Lastly, open reference OTU picking first performed closed reference OTU picking, and then performs de novo on sequences that failed to match reference sequences in the lookup database.
+Closed reference OTU picking is fast because it simply clusters sequences into OTUs based on reference sequences found in a database. If a sequence doesn't match above a given similiary threshold to the database sequence, it is tossed away. It should probably be obvious if a given sequence isn't found in the reference database, it too will be removed. De novo, on the other hand, can deal with novel sequences since it doesn't use a lookup database. Instead, it clusters sequences by aligning them against one another, with sequences above a given similarity threshold clustered into OTUs. Lastly, open reference OTU picking first performed closed reference OTU picking, and then performs de novo on sequences that failed to match reference sequences in the lookup database.
 
 To perform closed reference OTU picking, we need to specify our reference database (we'll use GreenGenes) by setting the location of our reference sequences, our reference taxonomy. We also need to specify our picking parameters, which in this example, will consist of the OTU picking method (sortmerna), the number of threads for paralellization, and the similarity threshold (.97) for our sequences when we compare them to the GreenGenes database.
 
