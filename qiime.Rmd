@@ -26,7 +26,7 @@ biom <- file.path(CONDA,'biom')
 
 This will be an introduction to QIIME. We'll start by going command by command, and then at the end will be a submission script for proteus. This should give you two flavors of running QIIME, one from within R, should you choose to install QIIME locally, and one via Proteus.
 
-We're going to use the dataset from the QIIME illumina tutorial, moving pictures, simply because it's small and reliable. If you choose to install QIIME and worth through this locally, you can download the dataset by running the following command in bash: `r svn checkout https://github.com/sw1/Bioinformatics/trunk/data_moving_pictures`. You can simply go to the link and download it manually as well.
+We're going to use the dataset from the QIIME illumina tutorial, moving pictures, simply because it's small and reliable. If you choose to install QIIME and worth through this locally, you can download the dataset by running the following command in bash: `r svn checkout https://github.com/sw1/Bioinformatics/trunk/Data/moving_pictures`. You can simply go to the link and download it manually as well.
 
 Once it's downloaded, set the directly to a variable:
 
@@ -292,7 +292,55 @@ rm -r $work_dir/*
 Or we can calculate the metrics more directly:
 
 ```{r,eval=FALSE}
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -M sw424@drexel.edu
+#$ -l h_rt=04:00:00
+#$ -P rosenclassPrj
+#$ -l mem_free=30G
+#$ -l h_vmem=32G
+#$ -q all.q
 
+. /etc/profile.d/modules.sh
+module load shared
+module load proteus
+module load sge/univa
+module load gcc/4.8.1
+module load qiime/gcc/64/1.9.1
+
+data_dir=/home/sw424/genStats/moving_pictures
+work_dir=/scratch/sw424/moving_pictures/
+
+mkdir -p $work_dir
+
+cp $data_dir/fastq_out/picked_otus/97_otus.tree $work_dir
+cp $data_dir/fastq_out/picked_otus/otu_table.biom $work_dir
+cp $data_dir/map.tsv $work_dir
+
+otus=$work_dir/otu_table.biom
+tree=$work_dir/97_otus.tree
+map=$work_dir/map.tsv
+
+
+met_dir=$work_dir/metrics
+
+
+alpha_diversity.py -i $otus -t $tree -o $met_dir/alpha.txt
+
+beta_diversity.py -i $otus -o $met_dir/beta -t $tree -m unweighted_unifrac
+beta_diversity.py -i $otus -o $met_dir/beta -t $tree -m weighted_unifrac
+
+principal_coordinates.py -i $met_dir/beta -o $met_dir/pcoa
+
+make_2d_plots.py -i $met_dir/pcoa/pcoa_unweighted_unifrac_otu_table.txt -m $map -b SampleType -o $met_dir/pcoa/figures
+make_2d_plots.py -i $met_dir/pcoa/pcoa_weighted_unifrac_otu_table.txt -m $map -b SampleType -o $met_dir/pcoa/figures
+
+transform_coordinate_matrices.py -i $met_dir/pcoa/pcoa_unweighted_unifrac_otu_table.txt,$met_dir/pcoa/pcoa_weighted_unifrac_otu_table.txt -r 999 -o $met_dir/procrustes/
+
+make_emperor.py -c -i $met_dir/procrustes -o $met_dir/procrustes/figures -m $map --custom_axes DaysSinceExperimentStart
+
+mv $met_dir $data_dir
 ```
 
 ## Loading QIIME Results into Phyloseq
