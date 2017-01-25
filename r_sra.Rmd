@@ -10,6 +10,7 @@ Many of your projects will involve working with publically available data from p
 ```{r,warning=FALSE,message=FALSE}
 library(stringr)
 library(SRAdb)
+library(Biostrings)
 ```
 
 First, download the database file to our working directly from the following link: http://dl.dropbox.com/u/51653511/SRAmetadb.sqlite.gz . Note that it's over 1 GB compressed, but will be about 24 GBs once you uncompress it, which you need to do.
@@ -17,7 +18,7 @@ First, download the database file to our working directly from the following lin
 Then, we'll make a connection with the database:
 
 ```{r,warning=FALSE,message=FALSE}
-sqlfile <- '~/SRAmetadb.sqlite'
+sqlfile <- '~/SRAdb/SRAmetadb.sqlite'
 sra_con <- dbConnect(SQLite(),sqlfile)
 ```
 
@@ -77,8 +78,43 @@ experiment_info <- getSRA(search_terms='SRP040765', out_types=c('experiment'),sr
 str(experiment_info)
 ```
 
-Using these commands, you should be able to download the .sra files you need along with all corresponding metadata to do analysis. Still, you might be wondering how you get the .fasta files from the .sra file. Well, the easiest way is to use something called the sra toolkit, which can be found here: https://www.ncbi.nlm.nih.gov/books/NBK158900/ . It's a command line tool, but you can run command line commands through are via the system() command:
+Using these commands, you should be able to download the .sra files you need along with all corresponding metadata to do analysis. Still, you might be wondering how you get the .fasta files from the .sra file. Well, the easiest way is to use something called the sra toolkit, which can be found here: https://www.ncbi.nlm.nih.gov/books/NBK158900/ . 
+
+So let's say we aimed to extract the sequences from the following sra files: SRR1635768 and SRR1566401. First, we'd download the files:
 
 ```{r}
-system('pwd')
+sra_dir <- '~/sra_download'
+dir.create(sra_dir,showWarnings=FALSE)
+
+sra_fns <- c("SRR1635768","SRR1566401")
+
+for (sra in sra_fns) getSRAfile(sra, sra_con, fileType = 'sra',destDir=sra_dir)
+```
+
+Then, we'd use the sra toolkit to extract the sequences. Assuming you have downloaded and installed it, we can do the following
+
+```{r}
+sra_output <- '~/sra_output'
+dir.create(sra_output,showWarnings=FALSE)
+
+sra_files <- list.files(sra_dir,full.names=TRUE)
+
+for (i in seq_along(fastq_files)) system2('fastq-dump',args=c(sra_files[i],
+                                                              '-O', sra_output))
+```
+
+And now we can check:
+
+```{r}
+fqs <- list.files(sra_output,full.names=TRUE)
+
+FASTQ <- readDNAStringSet(fqs,format='fastq')
+FASTQ
+```
+
+Note the header names; they're simply the SRR ids. You'd have to the sra metadata (see above) to match these to specific samples. For example,
+
+```{r}
+sample_info <- getSRA(search_terms='SRR1635768', out_types=c('sample'),sra_con)
+str(sample_info)
 ```
