@@ -107,6 +107,7 @@ Note that we can pass a lot of arguments into this function that control the err
 Now, say we had a problem where rare sequence variants were of most interest. It would then make sense to use a less conservative significance threshold, leading to *more* significant p-values, more partitions, and hence more rare variants. We can do this by increasing the **OMEGA_A** value from its default value of $1\times10^{-40}$. We'll fit a second model and change the threshold to $1\times10^{-20}$.
 
 ```{r}
+dd <- dada(derep, err=dd_err[[1]]$err_out, pool=TRUE)
 dd_rare <- dada(derep, err=dd_err[[1]]$err_out, pool=TRUE, OMEGA_A=1e-20)
 ```
 
@@ -187,15 +188,14 @@ And finally, we can build our phyloseq object for our GreenGenes table:
 TREE <- phy_tree(fit_gtr)
 
 META <- as.data.frame(MAP)
-row.names(META) <- META$`#SampleID`
+rownames(META) <- META$`#SampleID`
 
 OTU <- seqtab
 rownames(OTU) <- gsub('\\.fastq','',rownames(OTU))
 OTU <- OTU[rownames(META),]
 OTU <- otu_table(OTU,taxa_are_rows=FALSE)
   
-META <- sample_data(MAP)
-OTU <- otu_table(seqtab,taxa_are_rows=FALSE)
+META <- sample_data(META)
 
 TAXA <- taxtab_gg[colnames(OTU),]
 TAXA <- tax_table(TAXA)
