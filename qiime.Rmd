@@ -1,7 +1,7 @@
 ---
 title: "Qiime"
 author: "SW"
-date: "1/22/2017"
+date: "2017"
 output: html_document
 ---
 
