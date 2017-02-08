@@ -33,14 +33,17 @@ data_dir <- '~/Bioinformatics/data_moving_pictures'
 MAP <- read_delim(file.path(data_dir,'map.tsv'),'\t')
 ```
 
-Note that now we are forcing the split libraries commamnd to also return a demultiplexed fastq file:
+Note that now we are forcing the split libraries command to also return a demultiplexed fastq file. We going to also add a bunch of arguments to ensure that QIIME does *no* filtering. We want to deal with that using dada2.
 
 ```{r}
 system2(split_libraries_fastq,args=c('-o',file.path(data_dir,'fastq_out_3'),
                                      '-i',file.path(data_dir,'forward_reads.fastq.gz'),
                                      '-b',file.path(data_dir,'barcodes.fastq.gz'),
                                      '-m',file.path(data_dir,'map.tsv'),
-                                     '-q','20', 
+                                     '-r','999',
+                                     '-n','999',
+                                     '-q','0',
+                                     '-p','0.0001',
                                      '--store_demultiplexed_fastq'))
 ```
 
@@ -201,4 +204,150 @@ TAXA <- taxtab_gg[colnames(OTU),]
 TAXA <- tax_table(TAXA)
 
 PS <- phyloseq(OTU,TAXA,META,TREE)
+```
+
+## Running Dada2 on Proteus
+
+Now let's redo the analysis above, but on a cluster.
+
+We first need to make two scripts. One will be an R package script that installs our packages into a personal library folder. The other will run this script, but it will first make said folder and also unload any preloaded gcc modules that may cause conflicts during pacakge installation.
+
+First, make sure you're in your home directory. We'll now make the R package installer script. We'll call it **install_r_pkgs.R**.
+
+```{r,eval=FALSE}
+MYLIB <- Sys.getenv('R_LIBS_USER')
+
+source('https://bioconductor.org/biocLite.R')
+biocLite('dada2',lib=MYLIB)
+```
+
+Next, we'll make the bash script that runs this, which we'll call **run_install_r_pkgs.sh**:
+
+```{r,eval=FALSE}
+#!/bin/bash
+
+module unload gcc
+
+Rscript -e "dir.create(Sys.getenv('R_LIBS_USER'),showWarnings=FALSE,recursive=TRUE)"
+R CMD BATCH install_r_pkgs.R
+```
+
+Finally, we'll run the bash script by entering the following at the command line (this will take a few minutes to run):
+
+```{r,eval=FALSE}
+chmod +x run_install_r_pkgs.sh
+./run_install_r_pkgs.sh
+```
+
+You should now have a R folder in your home directory, and if you navigate through it, you should see a dada folder. To ensure your installation worked, in your home directly, type **R** to enter the R environment. Then, run **library(dada2)**. Assuming everything loads correctly, we can proceed to submitting a job.
+
+First, we'll create a bash script that runs some QIIME commands to do the demultiplexing and splitting, and then runs the dada anlysis. We'll assume that the moving pictures data is in your home directory. As before, the folder should contain three files: (1) the reads, (2) the barcodes, and (3) the mapping file.
+
+```{r,eval=FALSE}
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -M sw424@drexel.edu
+#$ -l h_rt=04:00:00
+#$ -P rosenclassPrj
+#$ -l mem_free=30G
+#$ -l h_vmem=32G
+#$ -q all.q
+
+. /etc/profile.d/modules.sh
+module load shared
+module load proteus
+module load sge/univa
+module load gcc/4.8.1
+module load qiime/gcc/64/1.9.1
+
+export ref_seqs=/mnt/HA/opt/qiime/gcc/64/1.9.1/lib/python2.7/site-packages/qiime_default_reference/gg_13_8_otus/rep_set/97_otus.fasta
+export ref_tax=/mnt/HA/opt/qiime/gcc/64/1.9.1/lib/python2.7/site-packages/qiime_default_reference/gg_13_8_otus/taxonomy/97_otu_taxonomy.txt
+
+data_dir=/home/sw424/genStats/moving_pictures
+work_dir=/scratch/sw424/moving_pictures
+
+mkdir -p $work_dir
+
+cp $data_dir/* $work_dir
+
+out_dir=$work_dir/fastq_out
+seqs=$work_dir/forward_reads.fastq.gz
+bc=$work_dir/barcodes.fastq.gz
+map=$work_dir/map.tsv
+
+split_libraries_fastq.py -o $out_dir -i $seqs -b $bc -m $map -r 999 -n 999 -q 0 -p -0.0001 --store_demultiplexed_fastq
+split_sequence_file_on_sample_ids.py -i $out_dir/seqs.fastq -o $out_dir/sequences --file_type fastq
+
+mv $out_dir/sequences $data_dir
+rm -r $work_dir/*
+```
+
+This gives us our demultiplexed, split sequences. Now, we'll make a dada2 R script that performs the actual analysis. We'll call this **mp_dada.R**.
+
+```{r, eval=FALSE}
+ref_fasta <- '~/scratch/sw424/silva_nr_v123_train_set.fa.gz'
+fq_dir <- '/scratch/sw424/moving_pictures/sequences'
+fqs <- list.files(fq_dir,full.names=TRUE)
+
+fqs_filt <- gsub('sequences','filtered',fqs)
+dir.create(gsub('(filtered).*','\\1',fqs_filt[1]),showWarnings=FALSE)
+for (i in seq_along(fqs)){
+  fastqFilter(fqs[i],fqs_filt[i],
+              trimLeft=10, truncLen=130,
+              maxN=0, maxEE=2, truncQ=2,
+              compress=TRUE)
+}
+
+derep <- derepFastq(fqs_filt)
+names(derep) <- sapply(strsplit(basename(fqs_filt), "_"), `[`, 1)
+
+dd_err <- dada(derep[1:20],err=NULL,selfConsist=TRUE)
+
+dd <- dada(derep, err=dd_err[[1]]$err_out, pool=TRUE)
+
+seqtab_all <- makeSequenceTable(dd)
+
+seqtab <- removeBimeraDenovo(seqtab_all)
+
+taxtab_silva <- assignTaxonomy(seqtab,refFasta=ref_fasta)
+colnames(taxtab_silva) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+
+saveRDS(seqtab,'/scratch/sw424/seqtab.rds')
+saveRDS(taxtab_silva,'/scratch/sw424/taxtab.rds)
+```
+
+Finally, we'll create the submission script:
+
+```{r, eval=FALSE}
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -M sw424@drexel.edu
+#$ -l h_rt=04:00:00
+#$ -P rosenclassPrj
+#$ -l mem_free=30G
+#$ -l h_vmem=32G
+#$ -q all.q
+
+. /etc/profile.d/modules.sh
+module load shared
+module load proteus
+module load sge/univa
+module load gcc/4.8.1
+
+data_dir=/home/sw424/genStats/moving_pictures
+work_dir=/scratch/sw424/moving_pictures
+
+mkdir -p $work_dir
+
+cp -r $data_dir/sequences $work_dir
+cp ~/mp_dada.R $work_dir
+cp ~/references/silva_nr_v123_train_set.fa.gz $work_dir
+
+R CMD BATCH mp_dada.R
+
+mv $out_dir/*.Rout $data_dir
+mv $out_dir/*.rds $data_dir
+rm -r $work_dir/*
 ```
