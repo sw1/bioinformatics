@@ -21,7 +21,7 @@ When we perform a statistical hypothesis test, we measure a given effect, assess
 **True** $H_0$ | False Positives (FP) | True Negatives (TN)
 
 
-You'll often see the false positive error probability refered to as $\alpha$ (where $\alpha=\frac{\text{FP}}{\text{FP}+\text{TN}}$), the false negative error probability referred to as $\beta$ (where $\beta=\frac{\text{FN}}{\text{FN}+\text{TP}}$), and the **probabilty of a false negative not occuring** as $1-\beta$. Tests that have low $beta$ are said to have high *power*, where $\text{Power}=1-\beta$. One can interpret a powerful test as a test that is very capable of detecting when the null hypothesis is false -- that is, $P(\text{reject } H_0|\text{true } H_1)$.
+You'll often see the false positive error probability refered to as $\alpha$ (where $\alpha=\frac{\text{FP}}{\text{FP}+\text{TN}}$), the false negative error probability referred to as $\beta$ (where $\beta=\frac{\text{FN}}{\text{FN}+\text{TP}}$), and the **probabilty of a false negative not occuring** as $1-\beta$. Tests that have low $beta$ are said to have high *power*, where $\text{Power}=1-\beta$. One can interpret a powerful test as a test that is very capable of detecting when the null hypothesis is false -- that is, $P(\text{reject } H_0|\text{true } H_1)$. If we were comparing two groups, and our power was about 0.9, then we'd have about a 90% chance of detecting a difference between the groups and a 10% chance of missing it.
 
 ## Multiple Comparisons
 
