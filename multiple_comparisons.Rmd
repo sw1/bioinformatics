@@ -3,6 +3,7 @@ title: "Multiple Comparisons"
 author: "SW"
 date: "2/13/2017"
 output: html_document
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
