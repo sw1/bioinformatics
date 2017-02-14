@@ -21,7 +21,7 @@ When we perform a statistical hypothesis test, we measure a given effect, assess
 **True** $H_0$ | False Positives (FP) | True Negatives (TN)
 
 
-You'll often see the false positive error probability refered to as $\alpha$ (where $\alpha=\frac{\text{FP}}{\text{FP}+\text{TN}}$), the false negative error probability referred to as $\beta$ (where $\beta=\frac{\text{FN}}{\text{FN}+\text{TP}}$), and the **probabilty of a false negative not occuring** as $1-\beta$. Tests that have low $beta$ are said to have high *power*, where $\text{Power}=1-\beta$. One can interpret a powerful test as a test that is very capable of correctly detecting when the null hypothesis is false -- that is, $P(\text{reject } H_0|\text{true } H_1)$.
+You'll often see the false positive error probability refered to as $\alpha$ (where $\alpha=\frac{\text{FP}}{\text{FP}+\text{TN}}$), the false negative error probability referred to as $\beta$ (where $\beta=\frac{\text{FN}}{\text{FN}+\text{TP}}$), and the **probabilty of a false negative not occuring** as $1-\beta$. Tests that have low $beta$ are said to have high *power*, where $\text{Power}=1-\beta$. One can interpret a powerful test as a test that is very capable of detecting when the null hypothesis is false -- that is, $P(\text{reject } H_0|\text{true } H_1)$.
 
 ## Multiple Comparisons
 
@@ -33,6 +33,7 @@ N_grp2 <- 50
 N <- N_grp1+N_grp2
 M <- 10000
 
+set.seed(453)
 TABLE_grp1 <- matrix(rnorm(N_grp1*M,0,1),N_grp1,M,dimnames=list(paste0('sample',1:N_grp1),paste0('gene',1:M)))
 TABLE_grp2 <- matrix(rnorm(N_grp2*M,0,1),N_grp2,M,dimnames=list(paste0('sample',1:N_grp2),paste0('gene',1:M)))
 TABLE <- rbind(TABLE_grp1,TABLE_grp2)
@@ -41,7 +42,6 @@ TABLE <- rbind(TABLE_grp1,TABLE_grp2)
 Now, let's aim to identify important genes that are different between the two groups. We can do this by performing a t test between the groups for each gene sequentially. I'm going to hardcode the t test there in case you are unfamiliar.
 
 ```{r}
-set.seed(453)
 tstats <- vector(mode='double',length=M)
 for (gene in seq_len(M)){
   grp1 <- TABLE[1:50,gene]
@@ -91,6 +91,7 @@ N_grp2 <- 50
 N <- N_grp1+N_grp2
 M <- 10000
 
+set.seed(65)
 TABLE_grp1 <- matrix(rnorm(N_grp1*M,.25,2),N_grp1,M,dimnames=list(paste0('sample',1:N_grp1),paste0('gene',1:M)))
 TABLE_grp2 <- matrix(rnorm(N_grp2*M,-.25,2),N_grp2,M,dimnames=list(paste0('sample',1:N_grp2),paste0('gene',1:M)))
 TABLE <- rbind(TABLE_grp1,TABLE_grp2)
