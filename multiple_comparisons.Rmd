@@ -14,6 +14,8 @@ library(dplyr)
 library(shiny)
 ```
 
+Interactive version: https://sw424.shinyapps.io/multiple_comparisons/
+
 ## Hypothesis Testing and Power
 
 When we perform a statistical hypothesis test, we measure a given effect, assess its probability of occuring given a null hypothesis $H_0$ (i.e., the hypothesis that there is *no* relationship between our test groupings), and reject said null if the probability falls below a particular threshold. We "accept" $H_1$ and consider this test to be *statistically significant*. We aren't always right, however; hence, hypothesis testing is prone to *false positives (type I errors) and false negatives (type II errors)*:
