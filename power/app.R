@@ -61,7 +61,8 @@ server <- function(input, output) {
     p1 <- ggplot(df,aes(value,fill=group)) + 
       geom_density(color='black',alpha=.3) +
       geom_vline(xintercept=qnorm(1-alpha,P1_mu,10),linetype=3) +
-      labs(x='',y='',fill='')
+      labs(x='',y='',fill='') +
+      xlim(120,280)
     
     if (nrow(DF1)>0) p2 <-  geom_ribbon(data=DF1, aes(x=x,ymin=0,ymax=y),fill='red',alpha=.7) else p2 <- NULL
     if (nrow(DF2)>0) p3 <- geom_ribbon(data=DF2, aes(x=x,ymin=0,ymax=y),fill='blue',alpha=.7) else p3 <- NULL
