@@ -66,12 +66,15 @@ server <- function(input, output) {
     if (nrow(DF1)>0) p2 <-  geom_ribbon(data=DF1, aes(x=x,ymin=0,ymax=y),fill='red',alpha=.7) else p2 <- NULL
     if (nrow(DF2)>0) p3 <- geom_ribbon(data=DF2, aes(x=x,ymin=0,ymax=y),fill='blue',alpha=.7) else p3 <- NULL
     
-    beta <- sum(D %>% filter(group=='treatment',x > qnorm(0,P2_mu,10) & x < qnorm(1-alpha,P1_mu,10)) %>% select(y))/sum(D %>% filter(group=='treatment') %>% select(y))
+    numer <- D %>% filter(group=='treatment',x > qnorm(0,P2_mu,10) & x < qnorm(1-alpha,P1_mu,10)) %>% select(y)
+    denom <- D %>% filter(group=='treatment') %>% select(y)
+    if (nrow(numer)>0) beta <- sum(numer)/sum(denom) else beta <- 0
     onebeta <- 1-beta
-    p4 <- annotate('label',x=235,y=.03,label=paste0('beta==',round(beta,3)),parse=TRUE)
-    p5 <- annotate('label',x=235,y=.02,label=paste0('1-beta==',round(onebeta,3)),parse=TRUE)
+    p4 <- annotate('label',x=245,y=.03,label=paste0('beta==',round(beta,3)),parse=TRUE) 
+    p5 <- annotate('label',x=245,y=.02,label=paste0('1-beta==',round(onebeta,3)),parse=TRUE) 
+    p6 <- annotate('label',x=qnorm(1-alpha,P1_mu,10),y=.04,label=paste0('x[alpha]==',round(qnorm(1-alpha,P1_mu,10),0)),parse=TRUE)
     
-    p1 + p2 + p3 + p4 + p5
+    p1 + p2 + p3 + p4 + p5 + p6
     
   })
 }
