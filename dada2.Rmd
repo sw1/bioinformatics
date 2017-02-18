@@ -249,11 +249,12 @@ We'll name the script **prep_sub.sh**:
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -y
 #$ -M sw424@drexel.edu
-#$ -l h_rt=00:10:00
+#$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
-#$ -l mem_free=5G
-#$ -l h_vmem=10G
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
 #$ -q all.q
 
 . /etc/profile.d/modules.sh
@@ -328,11 +329,13 @@ Finally, we'll create the submission script:
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
-#$ -l mem_free=20G
-#$ -l h_vmem=25G
+#$ -pe shm 16
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
 #$ -q all.q
 
 . /etc/profile.d/modules.sh

@@ -192,11 +192,13 @@ This was all done in R, which is probably unnecessary for proteus. You can submi
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -y
 #$ -M sw424@drexel.edu
-#$ -l h_rt=04:00:00
+#$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
-#$ -l mem_free=30G
-#$ -l h_vmem=32G
+#$ -pe shm 16
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
 #$ -q all.q
 
 . /etc/profile.d/modules.sh
@@ -225,7 +227,7 @@ split_libraries_fastq.py -o $out_dir -i $seqs -b $bc -m $map -q 20
 
 params=$work_dir/sortmerna_pick_params.txt
 
-printf "pick_otus:otu_picking_method sortmerna\npick_otus:threads 60\npick_otus:similarity 0.97" > $params
+printf "pick_otus:otu_picking_method sortmerna\npick_otus:threads 16\npick_otus:similarity 0.97" > $params
 
 pick_closed_reference_otus.py -i $out_dir/seqs.fna -o $out_dir/picked_otus -r $ref_seqs -t $ref_tax -p $params
 
@@ -247,11 +249,12 @@ Now, we'll write a submission script to get analyses output.
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -y
 #$ -M sw424@drexel.edu
-#$ -l h_rt=04:00:00
+#$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
-#$ -l mem_free=30G
-#$ -l h_vmem=32G
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
 #$ -q all.q
 
 . /etc/profile.d/modules.sh
@@ -295,11 +298,12 @@ Or we can calculate the metrics more directly:
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
+#$ -y
 #$ -M sw424@drexel.edu
-#$ -l h_rt=04:00:00
+#$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
-#$ -l mem_free=30G
-#$ -l h_vmem=32G
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
 #$ -q all.q
 
 . /etc/profile.d/modules.sh
