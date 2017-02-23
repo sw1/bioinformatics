@@ -296,7 +296,7 @@ saveRDS(seqtab,file.path(scratch_path,'seqtab.rds'))
 saveRDS(taxtab_silva,file.path(scratch_path,'taxtab.rds'))
 ```
 
-Finally, we'll create the submission script. **Note the following change that allows you to use the pacakges in the shared folder.** In this submissions script, immediately after you load your modules, you must add the line:
+Finally, we'll create the submission script. **Note the following change that allows you to use the packages in the shared folder.** In this submission script, immediately after you load your modules, you must add the line:
 
 ```{r,eval=FALSE}
 export R_LIBS=/mnt/HA/groups/rosenclassGrp/r_libs
