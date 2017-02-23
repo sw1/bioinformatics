@@ -192,7 +192,7 @@ This was all done in R, which is probably unnecessary for proteus. You can submi
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -y
+#$ -j y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
@@ -233,6 +233,8 @@ pick_closed_reference_otus.py -i $out_dir/seqs.fna -o $out_dir/picked_otus -r $r
 
 mv $out_dir $data_dir
 rm -r $work_dir/*
+  
+exit 0
 ```
 
 ## Summarizing Our Results
@@ -249,7 +251,7 @@ Now, we'll write a submission script to get analyses output.
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -y
+#$ -j y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
@@ -290,6 +292,8 @@ core_diversity_analyses.py -o $analysis_dir/diversity -i $otus -m $map -t $tree 
 
 mv $analysis_dir $data_dir
 rm -r $work_dir/*
+  
+exit 0
 ```
 
 Or we can calculate the metrics more directly:
@@ -298,7 +302,7 @@ Or we can calculate the metrics more directly:
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -y
+#$ -j y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
@@ -345,6 +349,8 @@ transform_coordinate_matrices.py -i $met_dir/pcoa/pcoa_unweighted_unifrac_otu_ta
 make_emperor.py -c -i $met_dir/procrustes -o $met_dir/procrustes/figures -m $map --custom_axes DaysSinceExperimentStart
 
 mv $met_dir $data_dir
+
+exit 0
 ```
 
 ## Loading QIIME Results into Phyloseq

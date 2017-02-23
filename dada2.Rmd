@@ -208,38 +208,9 @@ PS <- phyloseq(OTU,TAXA,META,TREE)
 
 ## Running Dada2 on Proteus
 
-Now let's redo the analysis above, but on a cluster.
+Now let's redo the analysis above, but on a cluster. I'll explain below how to run dada2 via two ways. The first will involve simply using packages installed in a shared group folder. The second will cover installing dada2 in a local folder. If you lack access to the shared folder, or, if for some reason it no longer exists, go to method 2. 
 
-We first need to make two scripts. One will be an R package script that installs our packages into a personal library folder. The other will run this script, but it will first make said folder and also unload any preloaded gcc modules that may cause conflicts during pacakge installation.
-
-First, make sure you're in your home directory. We'll now make the R package installer script. We'll call it **install_r_pkgs.R**.
-
-```{r,eval=FALSE}
-MYLIB <- Sys.getenv('R_LIBS_USER')
-
-source('https://bioconductor.org/biocLite.R')
-biocLite('dada2',lib=MYLIB)
-```
-
-Next, we'll make the bash script that runs this, which we'll call **run_install_r_pkgs.sh**:
-
-```{r,eval=FALSE}
-#!/bin/bash
-
-module unload gcc
-
-Rscript -e "dir.create(Sys.getenv('R_LIBS_USER'),showWarnings=FALSE,recursive=TRUE)"
-R CMD BATCH install_r_pkgs.R
-```
-
-Finally, we'll run the bash script by entering the following at the command line (this will take a few minutes to run):
-
-```{r,eval=FALSE}
-chmod +x run_install_r_pkgs.sh
-./run_install_r_pkgs.sh
-```
-
-You should now have a R folder in your home directory, and if you navigate through it, you should see a dada folder. To ensure your installation worked, in your home directly, type **R** to enter the R environment. Then, run **library(dada2)**. Assuming everything loads correctly, we can proceed to submitting a job.
+### Method 1: Using rosenclassGrp Shared R Library
 
 First, we'll create a bash script that runs some QIIME commands to do the demultiplexing and splitting, and then runs the dada anlysis. We'll assume that the moving pictures data is in your home directory. As before, the folder should contain three files: (1) the reads, (2) the barcodes, and (3) the mapping file.
 
@@ -249,7 +220,7 @@ We'll name the script **prep_sub.sh**:
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -y
+#$ -j y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
@@ -284,6 +255,8 @@ split_sequence_file_on_sample_ids.py -i $out_dir/seqs.fastq -o $out_dir/sequence
 
 mv $out_dir/sequences $data_dir
 rm -r $work_dir/*
+  
+exit 0
 ```
 
 This gives us our demultiplexed, split sequences. Now, we'll make a dada2 R script that performs the actual analysis. We'll call this **dada.R**.
@@ -323,13 +296,99 @@ saveRDS(seqtab,file.path(scratch_path,'seqtab.rds'))
 saveRDS(taxtab_silva,file.path(scratch_path,'taxtab.rds'))
 ```
 
-Finally, we'll create the submission script:
+Finally, we'll create the submission script. **Note the following change that allows you to use the pacakges in the shared folder.** In this submissions script, immediately after you load your modules, you must add the line:
+
+```{r,eval=FALSE}
+export R_LIBS=/mnt/HA/groups/rosenclassGrp/r_libs
+```
+
+This gives us the following submission script:
 
 ```{r, eval=FALSE}
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -y
+#$ -j y
+#$ -M sw424@drexel.edu
+#$ -l h_rt=01:00:00
+#$ -P rosenclassPrj
+#$ -pe shm 16
+#$ -l mem_free=12G
+#$ -l h_vmem=16G
+#$ -q all.q
+
+. /etc/profile.d/modules.sh
+module load shared
+module load proteus
+module load sge/univa
+module load gcc/4.8.1
+
+export R_LIBS=/mnt/HA/groups/rosenclassGrp/r_libs
+
+data_dir=/home/sw424/genStats/dada2
+work_dir=/scratch/sw424/moving_pictures
+
+mkdir -p $work_dir
+
+cp -r $data_dir/moving_pictures/sequences $work_dir
+cp $data_dir/dada.R $work_dir
+cp ~/references/silva_nr_v123_train_set.fa.gz $work_dir
+
+R CMD BATCH $work_dir/dada.R
+
+mv $work_dir/*.Rout $data_dir
+mv $work_dir/*.rds $data_dir
+rm -rf $work_dir
+
+exit 0
+```
+
+### Method 2: Creating a Local Library
+
+We first need to make two scripts. One will be an R package script that installs our packages into a personal library folder. The other will run this script, but it will first make said folder and also unload any preloaded gcc modules that may cause conflicts during pacakge installation.
+
+First, make sure you're in your home directory. We'll now make the R package installer script. We'll call it **install_r_pkgs.R**.
+
+```{r,eval=FALSE}
+MYLIB <- Sys.getenv('R_LIBS_USER')
+
+source('https://bioconductor.org/biocLite.R')
+biocLite('dada2',lib=MYLIB)
+```
+
+Next, we'll make the bash script that runs this, which we'll call **run_install_r_pkgs.sh**:
+
+```{r,eval=FALSE}
+#!/bin/bash
+
+module unload gcc
+
+Rscript -e "dir.create(Sys.getenv('R_LIBS_USER'),showWarnings=FALSE,recursive=TRUE)"
+R CMD BATCH install_r_pkgs.R
+```
+
+Finally, we'll run the bash script by entering the following at the command line (this will take a few minutes to run):
+
+```{r,eval=FALSE}
+chmod +x run_install_r_pkgs.sh
+./run_install_r_pkgs.sh
+```
+
+You should now have a R folder in your home directory, and if you navigate through it, you should see a dada folder. To ensure your installation worked, in your home directly, type **R** to enter the R environment. Then, run **library(dada2)**. Assuming everything loads correctly, we can proceed to submitting a job.
+
+**Note that in the submission script, you must remove the line where we changed the R_LIBS path**:
+
+```{r,eval=FALSE}
+export R_LIBS=/mnt/HA/groups/rosenclassGrp/r_libs
+```
+
+which gives us the following submission script:
+
+```{r, eval=FALSE}
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -j y
 #$ -M sw424@drexel.edu
 #$ -l h_rt=01:00:00
 #$ -P rosenclassPrj
@@ -358,4 +417,6 @@ R CMD BATCH $work_dir/dada.R
 mv $work_dir/*.Rout $data_dir
 mv $work_dir/*.rds $data_dir
 rm -rf $work_dir
+
+exit 0
 ```
