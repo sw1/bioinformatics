@@ -100,7 +100,11 @@ dir.create(sra_output,showWarnings=FALSE)
 sra_files <- list.files(sra_dir,full.names=TRUE)
 
 for (i in seq_along(fastq_files)) system2('fastq-dump',args=c(sra_files[i],
-                                                              '-O', sra_output))
+                                                              '-O', sra_output,
+                                                              '--gzip',
+                                                              '--clip',
+                                                              '--skip-technical',
+                                                              '--dumpbase'))
 ```
 
 And now we can check:
@@ -118,3 +122,20 @@ Note the header names; they're simply the SRR ids. You'd have to the sra metadat
 sample_info <- getSRA(search_terms='SRR1635768', out_types=c('sample'),sra_con)
 str(sample_info)
 ```
+
+### Fastq Dump for Paired End Reads
+
+It should be noted that simply using the fastq-dump command as above works only if your data *does not consist of paired end reads*. If you happen to have paired end reads, then the following arguments must be added to the fastq-dump call:
+
+```{r,eval=FALSE}
+for (i in seq_along(fastq_files)) system2('fastq-dump',args=c(sra_files[i],
+                                                              '-O', sra_output,
+                                                              '--gzip',
+                                                              '--clip',
+                                                              '--skip-technical',
+                                                              '--dumpbase',
+                                                              '--split-files',
+                                                              '--readids'))
+```
+
+For more information, see https://edwards.sdsu.edu/research/fastq-dump/
