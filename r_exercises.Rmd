@@ -1515,7 +1515,7 @@ Let's try and write a script that can solve a potentially computationally burdon
 And here is a diagram showing the process:
 
 <div style="display: block; margin: auto; width: 60%">
-![](rabbits1.png)
+![](Figures/rabbits1.png)
 </div>
 
 Now focus on the number of rabbits for each month: 1, 1, 2, 3, 5, 7. It's the fibonacci sequence, where the current months total is a sum of the previous month's total. We can therefore make a function that can *recursively* calculate the number of rabbits, using the finonacci sequence, only requiring the number of months the process will span across.
@@ -1541,7 +1541,7 @@ for (n in seq_len(25)) cat(fib(n),' ')
 Let's change the problem a little bit. Let's assume now that the rabbits can die after k months. For $k=3$, we'd have the following process:
 
 <div style="display: block; margin: auto; width: 60%">
-![](rabbits2.png)
+![](Figures/rabbits2.png)
 </div>
 
 We can write another recurssive algorithm to tackle this:
